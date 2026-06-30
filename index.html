@@ -1,0 +1,1646 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ecosistema Dr Pizza Cbo</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/libphonenumber-js/1.10.53/libphonenumber-js.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        /* ==========================================================================
+           VARIABLES GLOBALES Y ESTILOS BASE
+           ========================================================================== */
+        :root {
+            --brand-red: #B80311;
+            --brand-red-dark: #82020B;
+            --brand-red-glow: rgba(184, 3, 17, 0.2);
+            --bg-main: #0B0B0C;
+            --bg-card: #16161A;
+            --bg-input: #1F1F24;
+            --text-primary: #F3F4F6;
+            --text-secondary: #9CA3AF;
+            --border-color: #2A2A32;
+            --color-success: #10B981;
+            --color-info: #3B82F6;
+            --color-warn: #F59E0B;
+            
+            /* Paleta Módulo Pedidos (Identidad del Menú) */
+            --pedidos-bg: #F2F2F0;
+            --pedidos-header: #8C0343;
+            --pedidos-text: #1A1A1A;
+            --pedidos-muted: #5A5A5A;
+            --pedidos-success: #038C4C;
+            --pedidos-accent: #A66617;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: var(--bg-main); color: var(--text-primary); -webkit-font-smoothing: antialiased; }
+
+        /* Contenedores de Secciones */
+        .spa-section { display: none; width: 100%; min-height: 100vh; }
+        .spa-section.active { display: block; }
+
+        /* Botón Global para volver al menú central */
+        .btn-volver-home {
+            position: fixed; top: 15px; left: 15px; background: rgba(0,0,0,0.6); color: white;
+            border: 1px solid rgba(255,255,255,0.2); padding: 8px 14px; border-radius: 8px;
+            cursor: pointer; z-index: 2000; font-size: 12px; font-weight: bold; backdrop-filter: blur(4px);
+            display: flex; align-items: center; gap: 6px; text-decoration: none;
+        }
+        .btn-volver-home:hover { background: var(--brand-red); border-color: var(--brand-red); }
+
+        /* ==========================================================================
+           ESTILOS: 0. LANDING PAGE CENTRAL
+           ========================================================================== */
+        .landing-container { display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+        .landing-dashboard { width: 100%; max-width: 1000px; text-align: center; }
+        .landing-header { margin-bottom: 40px; }
+        .landing-header h1 { font-size: 2.5rem; font-weight: 900; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 10px; }
+        .landing-header h1 span { color: var(--brand-red); }
+        .landing-header p { font-size: 1.1rem; color: var(--text-secondary); }
+        .landing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 25px; padding: 10px; }
+        .landing-card { background-color: var(--bg-card); border-radius: 15px; padding: 35px 20px; text-decoration: none; color: var(--text-primary); box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px solid transparent; cursor: pointer; }
+        .landing-card:hover { transform: translateY(-5px); box-shadow: 0 8px 25px var(--brand-red-glow); border-color: var(--brand-red); }
+        .landing-card .icon-wrapper { width: 70px; height: 70px; background-color: rgba(184, 3, 17, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 20px; transition: background-color 0.3s; }
+        .landing-card:hover .icon-wrapper { background-color: var(--brand-red); }
+        .landing-card .icon-wrapper i { font-size: 1.8rem; color: var(--brand-red); transition: color 0.3s; }
+        .landing-card:hover .icon-wrapper i { color: white; }
+        .landing-card h2 { font-size: 1.4rem; font-weight: 600; margin-bottom: 10px; }
+        .landing-card p { font-size: 0.9rem; color: var(--text-secondary); text-align: center; line-height: 1.4; }
+
+        /* ==========================================================================
+           ESTILOS: 1. MODULO PEDIDOS (MENÚ CLIENTE)
+           ========================================================================== */
+        #pane-pedidos-app { background-color: var(--pedidos-bg); color: var(--pedidos-text); padding-bottom: 90px; }
+        #pane-pedidos-app header { background-color: var(--pedidos-header); color: white; padding: 25px 20px; text-align: center; }
+        .pedidos-logo { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid white; margin-bottom: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
+        #pane-pedidos-app h1 { margin: 0; font-size: 26px; font-weight: 800; color: white; }
+        #pane-pedidos-app header p { margin: 5px 0 0 0; font-size: 14px; font-style: italic; opacity: 0.9; color: white; }
+        .pedidos-nav-tabs { position: sticky; top: 0; background: white; display: flex; justify-content: space-around; padding: 10px 0; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 100; }
+        .pedidos-nav-item { padding: 8px 10px; font-size: 13px; font-weight: bold; color: var(--pedidos-muted); border-radius: 20px; cursor: pointer; transition: 0.3s; }
+        .pedidos-nav-item.active { background-color: var(--pedidos-success); color: white; }
+        .pedidos-category-section { padding: 20px 15px 5px 15px; scroll-margin-top: 60px; }
+        .pedidos-category-title { color: var(--pedidos-header); font-size: 22px; font-weight: bold; margin-bottom: 15px; border-bottom: 2px solid var(--pedidos-header); padding-bottom: 5px; display: inline-block; }
+        .pedidos-menu-item { background-color: #FFFFFF; border-radius: 16px; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); border: 1px solid #DCD8D0; padding: 16px; position: relative; text-align: left; }
+        .pedidos-item-title { font-size: 18px; font-weight: bold; color: var(--pedidos-header); margin: 0 0 6px 0; }
+        .pedidos-item-description { font-size: 13px; color: var(--pedidos-muted); margin: 0 0 15px 0; line-height: 1.4; }
+        .pedidos-item-options { display: flex; flex-direction: column; gap: 10px; }
+        .pedidos-size-option, .pedidos-drink-option, .pedidos-delivery-option { background: #FFFFFF; border-radius: 12px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #EFECE6; }
+        .pedidos-size-label-container { display: flex; align-items: center; gap: 6px; font-size: 14px; }
+        .pedidos-size-name { font-weight: bold; color: var(--pedidos-text); }
+        .pedidos-price-tag { color: var(--pedidos-success); font-weight: bold; }
+        .pedidos-add-controls { display: flex; align-items: center; gap: 8px; }
+        .pedidos-extras-btn { background: white; border: 1px solid var(--pedidos-accent); color: var(--pedidos-accent); font-size: 12px; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .pedidos-item-badge { position: absolute; top: 16px; right: 16px; background-color: var(--pedidos-success); color: white; font-size: 12px; font-weight: bold; padding: 4px 8px; border-radius: 10px; display: none; }
+        .pedidos-quantity-control { border: 1px solid #DCD8D0; background: white; color: var(--pedidos-text); font-size: 18px; font-weight: bold; border-radius: 8px; width: 32px; height: 32px; display: flex; justify-content: center; align-items: center; cursor: pointer; user-select: none; }
+        .pedidos-quantity-count { width: 24px; text-align: center; font-weight: bold; font-size: 16px; color: var(--pedidos-text); }
+        #pedidos-cart-toast { display: none; position: fixed; top: 20px; right: 20px; background: var(--pedidos-success); color: white; padding: 12px 20px; border-radius: 10px; z-index: 2000; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .pedidos-fixed-cart { position: fixed; bottom: 0; left: 0; width: 100%; background-color: #FFFFFF; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #EFECE6; box-shadow: 0 -4px 15px rgba(0,0,0,0.05); box-sizing: border-box; z-index: 999; }
+        .pedidos-cart-total { font-size: 22px; font-weight: 800; color: var(--pedidos-header); }
+        .pedidos-checkout-btn { background-color: var(--pedidos-header); color: white; border: none; padding: 12px 28px; font-size: 16px; font-weight: bold; border-radius: 12px; cursor: pointer; }
+        
+        /* Modales Generales SPA */
+        .spa-modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); backdrop-filter: blur(2px); justify-content: center; align-items: center; z-index: 3000; padding: 10px; }
+        .spa-modal { background-color: white; padding: 20px; border-radius: 20px; width: 90%; max-width: 360px; max-height: 85vh; overflow-y: auto; box-sizing: border-box; color: #1A1A1A; }
+        .spa-modal-title { color: var(--pedidos-header); font-size: 18px; font-weight: bold; margin-bottom: 5px; text-align: left; }
+        .spa-modal-subtitle { font-size: 13px; color: var(--pedidos-muted); margin-bottom: 15px; text-align: left; }
+        .spa-form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; text-align: left; }
+        .spa-form-group label { font-size: 14px; font-weight: bold; color: #1A1A1A; }
+        .spa-form-group select, .spa-form-group input { padding: 12px; border: 1px solid #DCD8D0; border-radius: 8px; background: #FFFDF9; font-size: 16px; color: #1A1A1A; width: 100%; }
+        .pedidos-cart-list-container { background: #F2F2F0; border-radius: 12px; padding: 10px; margin-bottom: 15px; max-height: 180px; overflow-y: auto; border: 1px solid #EFECE6; }
+        .pedidos-cart-list-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #EFECE6; }
+        .pedidos-cart-item-info { display: flex; flex-direction: column; gap: 2px; max-width: 60%; text-align: left; }
+        .pedidos-cart-item-name { font-weight: bold; font-size: 14px; color: #1A1A1A; }
+        .pedidos-cart-item-details { font-size: 12px; color: var(--pedidos-muted); }
+        .pedidos-total-breakdown { font-size: 13px; color: var(--pedidos-muted); margin-top: 5px; text-align: right; display: flex; flex-direction: column; gap: 4px; border-top: 1px dashed #EFECE6; padding-top: 8px; }
+        
+        .pedidos-ticket-success-view { display: none; text-align: center; padding: 10px 5px; }
+        .pedidos-ticket-badge-success { background: #E8FAF0; color: #038C4C; font-size: 14px; padding: 8px 12px; border-radius: 20px; font-weight: bold; display: inline-flex; align-items: center; gap: 6px; margin-bottom: 15px; }
+        .pedidos-ticket-receipt-box { background: #FFFDF9; border: 1px dashed #A66617; border-radius: 12px; padding: 15px; text-align: left; margin: 15px 0; font-family: monospace; font-size: 13px; color: #333; }
+
+        /* ==========================================================================
+           ESTILOS: ESTRUCTURAS DE PANELES ADMINISTRATIVOS (CAJA, REPORTES, SERVICIOS)
+           ========================================================================== */
+        .admin-dashboard-layout { max-width: 1100px; margin: 0 auto; padding: 20px 10px; }
+        .admin-header { background: linear-gradient(135deg, var(--brand-red-dark) 0%, var(--brand-red) 100%); color: white; padding: 32px 24px; text-align: center; border-radius: 20px; margin-bottom: 24px; box-shadow: 0 10px 30px var(--brand-red-glow); }
+        .admin-header h1 { margin: 0; font-size: 26px; font-weight: 900; text-transform: uppercase; letter-spacing: -0.5px; }
+        .admin-header p { margin: 8px 0 0 0; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: rgba(255, 255, 255, 0.8); }
+        
+        /* Controles de Filtros y Acciones */
+        .admin-panel-box { background-color: var(--bg-card); border-radius: 20px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); border: 1px solid var(--border-color); margin-bottom: 24px; }
+        .admin-panel-title { color: var(--text-primary); margin: 0 0 20px 0; font-size: 18px; font-weight: 800; text-transform: uppercase; display: flex; align-items: center; gap: 8px; }
+        .admin-panel-title::before { content: ''; display: inline-block; width: 4px; height: 18px; background-color: var(--brand-red); border-radius: 2px; }
+        
+        .admin-grid-inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; align-items: end; }
+        .admin-panel-box .admin-grid-inputs { text-align: left; }
+        .admin-input-group { display: flex; flex-direction: column; gap: 8px; text-align: left; }
+        .admin-input-group label { font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; }
+        .admin-input-group input[type="date"], .admin-input-group input[type="text"], .admin-input-group input[type="number"], .admin-input-group select { padding: 12px 14px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--bg-input); font-size: 15px; color: var(--text-primary); font-weight: 600; width: 100%; outline: none; }
+        .admin-input-group input:focus, .admin-input-group select:focus { border-color: var(--brand-red); }
+        
+        /* Botones de acción admin */
+        .admin-btn { background-color: var(--brand-red); color: white; border: none; padding: 13px 24px; font-size: 14px; font-weight: 700; text-transform: uppercase; border-radius: 11px; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+        .admin-btn:hover { background-color: var(--brand-red-dark); transform: translateY(-1px); }
+        .admin-btn-secondary { background-color: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary); }
+        .admin-btn-secondary:hover { border-color: var(--brand-red); }
+        .admin-btn-success { background-color: var(--color-success); }
+        .admin-btn-success:hover { background-color: #059669; }
+
+        /* Grillas de Métricas */
+        .admin-metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .admin-metric-card { background-color: var(--bg-card); border-radius: 16px; padding: 18px; border: 1px solid var(--border-color); display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; }
+        .admin-metric-card::after { content: ''; position: absolute; left: 0; top: 25%; height: 50%; width: 4px; border-radius: 0 4px 4px 0; background-color: var(--text-secondary); }
+        .admin-metric-card.m-success::after { background-color: var(--color-success); }
+        .admin-metric-card.m-danger::after { background-color: var(--brand-red); }
+        .admin-metric-card.m-info::after { background-color: var(--color-info); }
+        .admin-metric-card.m-warn::after { background-color: var(--color-warn); }
+        .admin-metric-label { font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 10px; }
+        .admin-metric-value { font-size: 24px; font-weight: 800; }
+
+        /* Tablas */
+        .admin-table-container { overflow-x: auto; width: 100%; }
+        .admin-table { width: 100%; border-collapse: collapse; font-size: 14px; text-align: left; }
+        .admin-table th { font-weight: 700; color: var(--text-secondary); background-color: rgba(255, 255, 255, 0.02); text-transform: uppercase; font-size: 11px; padding: 14px 12px; border-bottom: 2px solid var(--border-color); }
+        .admin-table td { padding: 14px 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.04); color: var(--text-primary); }
+        .admin-table tr:hover td { background-color: rgba(255, 255, 255, 0.01); }
+        .admin-row-total td { font-weight: 800; background-color: rgba(255, 255, 255, 0.02) !important; border-top: 2px solid var(--border-color) !important; border-bottom: 2px solid var(--border-color) !important; }
+
+        /* Badges de estados */
+        .admin-badge { padding: 5px 9px; border-radius: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; display: inline-block; }
+        .admin-badge-success { background-color: rgba(16, 185, 129, 0.1); color: var(--color-success); border: 1px solid rgba(16, 185, 129, 0.2); }
+        .admin-badge-warn { background-color: rgba(245, 158, 11, 0.1); color: var(--color-warn); border: 1px solid rgba(245, 158, 11, 0.2); }
+        .admin-badge-info { background-color: rgba(59, 130, 246, 0.1); color: var(--color-info); border: 1px solid rgba(59, 130, 246, 0.2); }
+
+        /* Navegación interna por tabs administrativos */
+        .admin-tabs-nav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+        .admin-tab-trigger { background: var(--bg-input); color: var(--text-secondary); border: 1px solid var(--border-color); padding: 12px 18px; font-size: 12px; font-weight: 700; text-transform: uppercase; border-radius: 10px; cursor: pointer; transition: all 0.2s; }
+        .admin-tab-trigger.active { background-color: var(--brand-red); color: white; border-color: var(--brand-red); box-shadow: 0 4px 12px var(--brand-red-glow); }
+        .admin-tab-pane { display: none; }
+        .admin-tab-pane.active { display: block; }
+
+        /* Elementos específicos del módulo de Servicio */
+        .servicio-grid-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+        .servicio-card-ticket { background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; }
+        .servicio-card-meta { font-size: 13px; line-height: 1.5; text-align: left; }
+        .servicio-results-dropdown { border: 1px solid var(--border-color); border-radius: 12px; max-height: 180px; overflow-y: auto; margin-bottom: 20px; display: none; background: var(--bg-input); text-align: left; }
+        .servicio-dropdown-item { padding: 12px 16px; border-bottom: 1px solid var(--border-color); cursor: pointer; font-size: 14px; }
+        .servicio-dropdown-item:hover { background: rgba(255,255,255,0.02); }
+        
+        /* Estilos Ticket térmico auditoría */
+        .thermal-ticket { background-color: #FFF; font-family: 'Courier New', Courier, monospace; margin: auto; padding: 20px; border: 1px solid #000; width: 320px; border-radius: 8px; color: #000; text-align: left; }
+        .thermal-header { text-align: center; border-bottom: 1px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
+        .thermal-line { display: flex; justify-content: space-between; font-size: 13px; margin: 4px 0; }
+        .thermal-total-box { border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 6px 0; margin-top: 10px; font-weight: bold; font-size: 14px; }
+
+        /* Vistas de Carga */
+        .spa-loading { text-align: center; padding: 30px; font-weight: 600; color: var(--text-secondary); font-size: 15px; }
+        
+        .badge-pedido-link { background: var(--bg-input); color: var(--text-primary); padding: 6px 10px; font-family: monospace; font-weight: bold; border-radius: 8px; cursor: pointer; display: inline-block; margin: 4px; border: 1px solid var(--border-color); }
+        .badge-puesto { background-color: rgba(255, 255, 255, 0.05); color: var(--text-secondary); padding: 4px 8px; border-radius: 6px; font-weight: 700; }
+        .badge-puesto.top-1 { background-color: rgba(245, 158, 11, 0.1); color: var(--color-warn); border: 1px solid rgba(245, 158, 11, 0.2); }
+
+        /* DISEÑO PREMIUM COMPONENTE TASA MONETARIA */
+        .tasa-premium-card { background: linear-gradient(145deg, #1e1e24, #16161a); border: 1px solid var(--border-color); border-radius: 18px; padding: 30px; max-width: 480px; margin: 20px auto; box-shadow: 0 8px 32px rgba(0,0,0,0.4); text-align: center; }
+        .tasa-premium-display { background: rgba(245, 158, 11, 0.06); border: 1px solid rgba(245, 158, 11, 0.2); padding: 20px; border-radius: 14px; margin-bottom: 24px; }
+        .tasa-premium-display i { font-size: 24px; color: var(--color-warn); margin-bottom: 8px; display: block; }
+        .tasa-premium-value { font-size: 32px; font-weight: 900; color: var(--text-primary); letter-spacing: -1px; }
+        .tasa-premium-value span { color: var(--color-warn); }
+    </style>
+</head>
+<body>
+
+    <section id="pane-central-hub" class="spa-section active">
+        <div class="landing-container">
+            <div class="landing-dashboard">
+                <div class="landing-header">
+                    <h1>DrPizza <span>Ecosistema</span></h1>
+                    <p>Módulos integrados de administración y atención</p>
+                </div>
+                <main class="landing-grid">
+                    <div class="landing-card" onclick="navegarA('pedidos')">
+                        <div class="icon-wrapper"><i class="fa-solid fa-pizza-slice"></i></div>
+                        <h2>Pedidos</h2>
+                        <p>Menú digital auto-gestionable para recepción de órdenes cliente.</p>
+                    </div>
+                    <div class="landing-card" onclick="navegarA('caja')">
+                        <div class="icon-wrapper"><i class="fa-solid fa-cash-register"></i></div>
+                        <h2>Caja</h2>
+                        <p>Control de arqueo, métricas de pago móvil, efectivo y auditoría.</p>
+                    </div>
+                    <div class="landing-card" onclick="navegarA('reportes')">
+                        <div class="icon-wrapper"><i class="fa-solid fa-chart-line"></i></div>
+                        <h2>Reportes</h2>
+                        <p>Inteligencia de ventas detallada por productos, tamaños y repartos.</p>
+                    </div>
+                    <div class="landing-card" onclick="navegarA('servicio')">
+                        <div class="icon-wrapper"><i class="fa-solid fa-user-gear"></i></div>
+                        <h2>Servicio</h2>
+                        <p>Buscador CRM, control de tasa, estatus de cocina y lotes de masa.</p>
+                    </div>
+                </main>
+            </div>
+        </div>
+    </section>
+
+    <button id="global-back-btn" class="btn-volver-home" onclick="navegarA('hub')" style="display: none;">
+        <i class="fa-solid fa-arrow-left-long"></i> Panel Central
+    </button>
+
+
+    <section id="pane-pedidos-app" class="spa-section">
+        <header>
+            <img src="https://i.postimg.cc/FFLcXWY0/IMG-20260311-191639-615.jpg" alt="Dr Pizza Cbo Logo" class="pedidos-logo" onerror="this.style.display='none'">
+            <h1>Dr Pizza Cbo</h1>
+            <p>Curamos tu apetito</p>
+        </header>
+
+        <div class="pedidos-nav-tabs">
+            <div class="pedidos-nav-item active" onclick="pedidos_scrollToSection('pedidos-sec-pizzas', this)">🍕 Pizzas</div>
+            <div class="pedidos-nav-item" onclick="pedidos_scrollToSection('pedidos-sec-half', this)">🌓 Mitades</div> 
+            <div class="pedidos-nav-item" onclick="pedidos_scrollToSection('pedidos-sec-bebidas', this)">🥤 Bebidas</div>
+            <div class="pedidos-nav-item" id="pedidos-nav-delivery-tab" onclick="pedidos_scrollToSection('pedidos-sec-delivery', this)">🛵 Delivery</div>
+        </div>
+
+        <div id="pedidos-cart-toast">¡Agregado al pedido! 🍕</div>
+        <div id="pedidos-menu-container"></div>
+
+        <div class="pedidos-fixed-cart">
+            <div class="pedidos-cart-info">
+                <span style="font-size: 13px;" id="pedidos-cart-count-text">0 ítems agregados</span>
+                <div class="pedidos-cart-total">$<span id="pedidos-cart-total-value">0.00</span></div>
+            </div>
+            <button class="pedidos-checkout-btn" onclick="pedidos_openConfirmModal()">Pedir</button>
+        </div>
+    </section>
+
+
+    <section id="pane-caja-app" class="spa-section">
+        <div class="admin-dashboard-layout">
+            <header class="admin-header">
+                <h1>Cierre de Caja</h1>
+                <p>Auditoría Financiera Integral</p>
+            </header>
+
+            <div class="admin-panel-box">
+                <div class="admin-grid-inputs">
+                    <div class="admin-input-group">
+                        <label>Selecciona el día de ventas:</label>
+                        <input type="date" id="caja-fecha-input">
+                    </div>
+                    <button class="admin-btn" onclick="caja_cargarCierre()">Calcular Cierre</button>
+                </div>
+            </div>
+
+            <div id="caja-loading-view" class="spa-loading" style="display: none;">Procesando datos contables de Supabase...</div>
+
+            <div id="caja-results-container" style="display: none;">
+                <div class="admin-metrics-grid">
+                    <div class="admin-metric-card m-success">
+                        <span class="admin-metric-label">Ingreso Banco (USD)</span>
+                        <span class="admin-metric-value" id="caja-m-banco-usd" style="color: var(--color-success);">$0.00</span>
+                    </div>
+                    <div class="admin-metric-card m-success">
+                        <span class="admin-metric-label">Ingreso Banco (Bs)</span>
+                        <span class="admin-metric-value" id="caja-m-banco-bs" style="color: var(--color-success);">0.00 Bs</span>
+                    </div>
+                    <div class="admin-metric-card m-danger">
+                        <span class="admin-metric-label">Ventas Netas Cocina</span>
+                        <span class="admin-metric-value" id="caja-m-neto-usd" style="color: var(--brand-red);">$0.00</span>
+                    </div>
+                    <div class="admin-metric-card m-info">
+                        <span class="admin-metric-label">Total Delivery (USD)</span>
+                        <span class="admin-metric-value" id="caja-m-delivery-usd" style="color: var(--color-info);">$0.00</span>
+                    </div>
+                    <div class="admin-metric-card m-success">
+                        <span class="admin-metric-label">Pago Móvil Neto</span>
+                        <span class="admin-metric-value" id="caja-m-pmovil" style="color: var(--color-success);">$0.00</span>
+                    </div>
+                    <div class="admin-metric-card m-warn">
+                        <span class="admin-metric-label">Caja Física (Efectivo)</span>
+                        <span class="admin-metric-value" id="caja-m-efectivo" style="color: var(--color-warn);">$0.00</span>
+                    </div>
+                    <div class="admin-metric-card">
+                        <span class="admin-metric-label">Total Comandas</span>
+                        <span class="admin-metric-value" id="caja-m-cantidad">0 comandas</span>
+                    </div>
+                </div>
+
+                <div class="admin-panel-box">
+                    <h3 class="admin-panel-title">Auditoría de Pedidos Diario</h3>
+                    <div class="admin-table-container">
+                        <table class="admin-table">
+                            <thead>
+                                <tr><th>ID</th><th>Cliente</th><th>Método de Pago</th><th>Total USD</th></tr>
+                            </thead>
+                            <tbody id="caja-tabla-cuerpo"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+    <section id="pane-reportes-app" class="spa-section">
+        <div class="admin-dashboard-layout">
+            <header class="admin-header">
+                <h1>Panel de Reportes</h1>
+                <p>Estadísticas y Análisis de Rendimiento Comercial</p>
+            </header>
+
+            <div class="admin-panel-box">
+                <span class="admin-input-group"><label style="margin-bottom:8px;">Rangos de Filtro Rápido</label></span>
+                <div style="display:flex; gap:10px; margin-bottom:20px; overflow-x:auto; padding-bottom:5px;">
+                    <button id="reportes-fast-hoy" class="admin-tab-trigger" onclick="reportes_aplicarFiltroRapido('hoy')">Hoy</button>
+                    <button id="reportes-fast-ayer" class="admin-tab-trigger" onclick="reportes_aplicarFiltroRapido('ayer')">Ayer</button>
+                    <button id="reportes-fast-semana" class="admin-tab-trigger" onclick="reportes_aplicarFiltroRapido('semana')">Esta Semana</button>
+                    <button id="reportes-fast-mes" class="admin-tab-trigger" onclick="reportes_aplicarFiltroRapido('mes')">Este Mes</button>
+                </div>
+
+                <div class="admin-grid-inputs">
+                    <div class="admin-input-group">
+                        <label>Desde:</label>
+                        <input type="date" id="reportes-fecha-inicio" onchange="reportes_desmarcarRapidos(); reportes_ejecutarConsultaActual()">
+                    </div>
+                    <div class="admin-input-group">
+                        <label>Hasta:</label>
+                        <input type="date" id="reportes-fecha-fin" onchange="reportes_desmarcarRapidos(); reportes_ejecutarConsultaActual()">
+                    </div>
+                </div>
+            </div>
+
+            <div class="admin-tabs-nav">
+                <button id="reportes-tab-productos" class="admin-tab-trigger active" onclick="reportes_cambiarVista('productos')">📦 Ventas por Sabor</button>
+                <button id="reportes-tab-clientes" class="admin-tab-trigger" onclick="reportes_cambiarVista('clientes')">👥 Historial de Ventas</button>
+                <button id="reportes-tab-detalles" class="admin-tab-trigger" onclick="reportes_cambiarVista('detalles')">📋 Logística Delivery</button>
+            </div>
+
+            <div id="reportes-sec-productos" class="admin-tab-pane active admin-panel-box">
+                <div class="admin-table-container">
+                    <table class="admin-table">
+                        <thead>
+                            <tr><th>Producto / Sabor</th><th>Familiar</th><th>Mediana</th><th>Normal</th><th>Unidad / Otro</th><th>Total Vendido</th></tr>
+                        </thead>
+                        <tbody id="reportes-body-cantidades"></tbody>
+                        <tfoot id="reportes-foot-cantidades"></tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <div id="reportes-sec-clientes" class="admin-tab-pane admin-panel-box">
+                <div class="admin-table-container">
+                    <table class="admin-table">
+                        <thead>
+                            <tr><th>ID Comanda</th><th>Cliente</th><th>Método</th><th>Monto Bruto USD</th></tr>
+                        </thead>
+                        <tbody id="reportes-body-clientes"></tbody>
+                        <tfoot id="reportes-foot-clientes"></tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <div id="reportes-sec-detalles" class="admin-tab-pane admin-panel-box">
+                <div class="admin-table-container">
+                    <table class="admin-table">
+                        <thead>
+                            <tr><th>Contacto</th><th>Cliente</th><th>Cargo Envío</th><th>Total Cuenta ($)</th></tr>
+                        </thead>
+                        <tbody id="reportes-body-detalles"></tbody>
+                        <tfoot id="reportes-foot-detalles"></tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+    <section id="pane-servicio-app" class="spa-section">
+        <div class="admin-dashboard-layout">
+            <div class="admin-header" style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; text-align: left; padding: 24px; flex-wrap: wrap; gap: 12px;">
+                <div>
+                    <h1>Panel de Servicios</h1>
+                    <p>Mantenimiento de Infraestructura y CRM</p>
+                </div>
+                <div style="background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(245, 158, 11, 0.3); padding: 10px 16px; border-radius: 12px; font-size: 14px; font-weight: bold; display: flex; align-items: center; gap: 8px; box-shadow: inset 0 1px 4px rgba(0,0,0,0.2); white-space: nowrap;">
+                    <i class="fa-solid fa-money-bill-1-wave" style="color: var(--color-warn); font-size: 16px;"></i>
+                    <span style="color: var(--text-secondary); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Tasa Activa:</span>
+                    <span id="servicio-txt-tasa-header" style="color: var(--color-warn); font-size: 16px; font-weight: 800;">...</span>
+                    <span style="color: var(--text-primary); font-size: 13px;">Bs/$</span>
+                </div>
+            </div>
+
+            <div class="admin-tabs-nav" style="margin-bottom: 24px;">
+                <button id="servicio-btn-tab-editor" class="admin-tab-trigger active" onclick="servicio_cambiarVista('editor')">🔍 Buscador CRM</button>
+                <button id="servicio-btn-tab-pendientes" class="admin-tab-trigger" onclick="servicio_cambiarVista('pendientes')">⏳ Cocina Pendiente</button>
+                <button id="servicio-btn-tab-lista" class="admin-tab-trigger" onclick="servicio_cambiarVista('lista')">🏆 Ranking CRM</button>
+                <button id="servicio-btn-tab-tasa" class="admin-tab-trigger" onclick="servicio_cambiarVista('tasa')">💵 Control Tasa</button>
+                <button id="servicio-btn-tab-masa" class="admin-tab-trigger" onclick="servicio_cambiarVista('masa')">🍕 Lotes de Masa</button>
+            </div>
+
+            <div id="servicio-pane-editor" class="admin-tab-pane active">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 20px;">
+                    <div class="admin-panel-box" style="margin:0; display:flex; flex-direction:column; justify-content:space-between;">
+                        <div class="admin-input-group">
+                            <label>Buscar Clientes (Nombre o Teléfono):</label>
+                            <input type="text" id="servicio-input-buscar" placeholder="Presiona Enter para buscar..." onkeyup="if(event.key === 'Enter') servicio_buscarPedidos()">
+                        </div>
+                        <button class="admin-btn" style="margin-top:14px; width:100%;" onclick="servicio_buscarPedidos()">Buscar Cliente</button>
+                    </div>
+                    <div class="admin-panel-box" style="margin:0; display:flex; flex-direction:column; justify-content:space-between;">
+                        <div class="admin-input-group">
+                            <label>Visualizador de Ticket Directo (ID):</label>
+                            <input type="number" id="servicio-input-ticket-directo" placeholder="Ej. 171539" onkeyup="if(event.key === 'Enter') servicio_buscarTicketDirecto()">
+                        </div>
+                        <button class="admin-btn admin-btn-secondary" style="margin-top:14px; width:100%;" onclick="servicio_buscarTicketDirecto()">Cargar Ticket</button>
+                    </div>
+                </div>
+
+                <div id="servicio-lista-resultados" class="servicio-results-dropdown"></div>
+
+                <div id="servicio-form-edicion" class="admin-panel-box" style="display: none;">
+                    <h3 class="admin-panel-title">Modificar Datos de Contacto</h3>
+                    <input type="hidden" id="servicio-edit-id">
+                    <div class="admin-grid-inputs" style="grid-template-columns: 1fr 1fr; margin-bottom: 20px;">
+                        <div class="admin-input-group"><label>Nombre del Cliente:</label><input type="text" id="servicio-edit-name"></div>
+                        <div class="admin-input-group"><label>Teléfono Celular:</label><input type="text" id="servicio-edit-phone"></div>
+                    </div>
+                    
+                    <div style="background: var(--bg-main); padding: 20px; border-radius: 12px; border: 1px dashed var(--border-color); margin-bottom: 20px;">
+                        <h4 style="font-size:12px; text-transform:uppercase; margin-bottom:12px;">📊 Historial Analítico de Consumo</h4>
+                        <div class="admin-grid-inputs" style="grid-template-columns: 1fr 1fr; gap:12px;">
+                            <div style="background:var(--bg-input); padding:12px; border-radius:8px; text-align:center;"><label>Órdenes (30 Días)</label><div id="servicio-stat-mes-cant" style="font-size:20px; font-weight:800; margin-top:4px;">0</div></div>
+                            <div style="background:var(--bg-input); padding:12px; border-radius:8px; text-align:center;"><label>Volumen Total</label><div id="servicio-stat-mes-monto" style="font-size:20px; font-weight:800; margin-top:4px; color:var(--color-success);">$0.00</div></div>
+                        </div>
+                        <div id="servicio-desglose-mensual" style="margin-top:16px; font-size:13px; color:var(--text-secondary); text-align:left; line-height:1.6;"></div>
+                    </div>
+
+                    <div style="display:flex; gap:10px; justify-content:flex-end;">
+                        <button class="admin-btn admin-btn-secondary" onclick="servicio_cancelarEdicion()">Cerrar</button>
+                        <button class="admin-btn admin-btn-success" onclick="servicio_actualizarRegistro()">Guardar Cambios</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="servicio-pane-pendientes" class="admin-tab-pane">
+                <div class="admin-panel-box">
+                    <h3 class="admin-panel-title" style="justify-content: space-between;">
+                        <span>⏳ Comandas Pendientes en Cocina</span>
+                        <button class="admin-btn admin-btn-secondary" style="padding:6px 12px; font-size:11px;" onclick="servicio_cargarBandejaPendientes()">Recargar Panel</button>
+                    </h3>
+                    <div id="servicio-contenedor-pendientes" class="servicio-grid-cards"></div>
+                    <button id="servicio-btn-maestro-procesar" class="admin-btn admin-btn-success" style="width:100%; margin-top:16px; display:none; padding:15px;" onclick="servicio_procesarPedidosEnBloque()"></button>
+                </div>
+            </div>
+
+            <div id="servicio-pane-lista" class="admin-tab-pane">
+                <div class="admin-panel-box">
+                    <div class="admin-grid-inputs" style="margin-bottom: 20px;">
+                        <div class="admin-input-group"><label>Desde:</label><input type="date" id="servicio-crm-inicio"></div>
+                        <div class="admin-input-group"><label>Hasta:</label><input type="date" id="servicio-crm-fin"></div>
+                    </div>
+                    <div style="display:flex; gap:12px;">
+                        <button class="admin-btn admin-btn-secondary" style="flex:1;" onclick="servicio_cargarListadoFrecuencia('rango')">Filtrar Rango Rígido</button>
+                        <button class="admin-btn" style="flex:1; background-color:var(--color-warn); color:black;" onclick="servicio_cargarListadoFrecuencia('mes')">Calcular Cliente del Mes 🏆</button>
+                    </div>
+                </div>
+                <div class="admin-panel-box">
+                    <div class="admin-table-container">
+                        <table class="admin-table">
+                            <thead><tr><th>Puesto</th><th>Cliente</th><th>Celular</th><th style="text-align:center;">Frecuencia</th><th>Volumen total</th></tr></thead>
+                            <tbody id="servicio-body-crm"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="servicio-pane-tasa" class="admin-tab-pane admin-panel-box" style="text-align:center;">
+                <h3 class="admin-panel-title">Mantenimiento de Tasa Monetaria</h3>
+                
+                <div class="tasa-premium-card">
+                    <div class="tasa-premium-display">
+                        <i class="fa-solid fa-money-bill-trend-up"></i>
+                        <span style="font-size:12px; text-transform:uppercase; color:var(--text-secondary); font-weight:700; letter-spacing:1px; display:block; margin-bottom:4px;">Tasa Activa en Sistema</span>
+                        <div class="tasa-premium-value"><span id="servicio-txt-tasa-actual">Cargando...</span> Bs/$</div>
+                    </div>
+                    
+                    <div class="admin-input-group" style="margin-bottom: 20px;">
+                        <label><i class="fa-solid fa-pen-to-square"></i> Ingresa el valor de la nueva tasa (Bs):</label>
+                        <input type="number" step="0.01" id="servicio-input-nueva-tasa" placeholder="Ej. 625.50" style="text-align:center; font-size:18px; padding:14px; border-color: rgba(255,255,255,0.05);">
+                    </div>
+                    
+                    <button class="admin-btn" style="width:100%; padding:15px; font-size:14px; background: linear-gradient(135deg, var(--brand-red) 0%, var(--brand-red-dark) 100%); box-shadow: 0 4px 15px var(--brand-red-glow);" onclick="servicio_actualizarTasaSistema()">
+                        <i class="fa-solid fa-rotate"></i> Sincronizar Tasa de Cambio
+                    </button>
+                </div>
+            </div>
+
+            <div id="servicio-pane-masa" class="admin-tab-pane">
+                <div id="servicio-contenedor-lotes-masa" class="admin-metrics-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));"></div>
+                <div class="admin-panel-box" style="border: 1px dashed var(--color-info);">
+                    <h3 class="admin-panel-title" style="color:var(--color-info);">📥 Abastecer Producción Directa al Lote Activo</h3>
+                    <div class="admin-grid-inputs" style="margin-bottom:20px;">
+                        <div class="admin-input-group"><label>Normales (250g):</label><input type="number" id="servicio-input-prod-normales" value="0"></div>
+                        <div class="admin-input-group"><label>Medianos (375g):</label><input type="number" id="servicio-input-prod-medianos" value="0"></div>
+                        <div class="admin-input-group"><label>Salchi:</label><input type="number" id="servicio-input-prod-salchi" value="0"></div>
+                        <div class="admin-input-group"><label>Familiar:</label><input type="number" id="servicio-input-prod-familiar" value="0"></div>
+                    </div>
+                    <button class="admin-btn" style="background-color:var(--color-info); width:100%;" onclick="servicio_cargarMasaLoteActivo()">Alimentar Lote Activo 🍕</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div id="pedidos-md-delivery-overlay" class="spa-modal-overlay">
+        <div class="spa-modal">
+            <div class="spa-modal-title">Tipo de Entrega</div>
+            <div class="spa-modal-subtitle">Selecciona cómo deseas recibir tu pedido</div>
+            <div id="pedidos-md-delivery-options" style="display:flex; flex-direction:column; gap:10px;"></div>
+            <button class="admin-btn admin-btn-secondary" style="width:100%; margin-top:15px; padding:10px;" onclick="document.getElementById('pedidos-md-delivery-overlay').style.display='none'">Cancelar</button>
+        </div>
+    </div>
+
+    <div id="pedidos-md-half-overlay" class="spa-modal-overlay">
+        <div class="spa-modal">
+            <div class="spa-modal-title">Armar Pizza Mitad y Mitad</div>
+            <div class="spa-modal-subtitle">Cálculo de promedio automatizado</div>
+            <div class="spa-form-group">
+                <label>1. Elige el Tamaño:</label>
+                <select id="pedidos-half-size-select" onchange="pedidos_updateHalfModalPrices()">
+                    <option value="" disabled selected>-- Elegir --</option>
+                    <option value="Normal">Normal</option>
+                    <option value="Mediana">Mediana</option>
+                    <option value="Familiar">Familiar</option>
+                    <option value="125grs">Unidad (Salchi)</option>
+                </select>
+            </div>
+            <div class="spa-form-group">
+                <label>2. Sabor Mitad A:</label>
+                <select id="pedidos-half-pizza-a-select" onchange="pedidos_updateHalfModalPrices()"></select>
+            </div>
+            <div class="spa-form-group">
+                <label>3. Sabor Mitad B:</label>
+                <select id="pedidos-half-pizza-b-select" onchange="pedidos_updateHalfModalPrices()"></select>
+            </div>
+            <div style="background: var(--pedidos-bg); border-radius: 12px; padding: 12px; text-align: center; border: 1px solid #DCD8D0; margin-bottom:12px;">
+                <span style="font-size: 13px; color:var(--pedidos-muted); font-weight: bold;">Precio Base Proporcional:</span>
+                <div style="font-size: 20px; font-weight: 800; color: var(--pedidos-success); margin-top: 2px;">$<span id="pedidos-half-base-price-display">0.00</span></div>
+            </div>
+            <div id="pedidos-half-extras-section" style="display: none; text-align:left;">
+                <label style="font-size: 12px; font-weight: bold; color: var(--pedidos-muted);">4. Adicionar Extras:</label>
+                <div id="pedidos-half-dynamic-extras-container" style="margin-top: 6px; max-height:100px; overflow-y:auto;"></div>
+            </div>
+            <div style="display:flex; gap:10px; margin-top:15px;">
+                <button class="admin-btn admin-btn-secondary" style="flex:1; padding:10px;" onclick="pedidos_closeHalfModal()">Cancelar</button>
+                <button class="pedidos-checkout-btn" style="flex:2; font-size:14px; padding:10px;" onclick="pedidos_confirmAddHalfPizza()">Sumar al Pedido</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="pedidos-md-extras-overlay" class="spa-modal-overlay">
+        <div class="spa-modal">
+            <div class="spa-modal-title" id="pedidos-modal-item-title">Producto</div>
+            <div class="spa-modal-subtitle" id="pedidos-modal-item-subtitle">Variación</div>
+            <div class="pedidos-cart-list-item" style="background:#F2F2F0; padding:12px; border-radius:12px; margin-bottom:12px; border:none;">
+                <span style="font-size:14px; font-weight:bold; color:#1A1A1A;">Cantidad:</span>
+                <div class="pedidos-add-controls">
+                    <button class="pedidos-quantity-control" id="pedidos-modal-min-btn">-</button>
+                    <span class="pedidos-quantity-count" id="pedidos-modal-qty-display">1</span>
+                    <button class="pedidos-quantity-control" id="pedidos-modal-plus-btn">+</button>
+                </div>
+            </div>
+            <div id="pedidos-modal-extras-section" style="text-align:left;">
+                <label style="font-size:13px; font-weight:bold; color:var(--pedidos-muted);">Selecciona extras:</label>
+                <div id="pedidos-dynamic-extras-container" style="margin-top:6px; max-height:120px; overflow-y:auto;"></div>
+            </div>
+            <div style="display:flex; gap:10px; margin-top:15px;">
+                <button class="admin-btn admin-btn-secondary" style="flex:1; padding:10px;" onclick="pedidos_closeExtrasModal()">Volver</button>
+                <button class="pedidos-checkout-btn" style="flex:2; font-size:14px; padding:10px;" id="pedidos-modal-confirm-btn">Agregar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="pedidos-md-confirm-overlay" class="spa-modal-overlay">
+        <div class="spa-modal" id="pedidos-modal-checkout-content" style="max-width:380px;">
+            <div class="spa-modal-title">Tu Pedido</div>
+            <div class="spa-modal-subtitle">Valida la lista y completa los datos de entrega</div>
+            <div class="pedidos-cart-list-container" id="pedidos-modal-cart-list"></div>
+            <div class="spa-form-group">
+                <label>Número Celular:</label>
+                <input type="tel" id="pedidos-client-phone" placeholder="Ej. 04141234567">
+            </div>
+            <div class="spa-form-group">
+                <label>Nombre y Apellido:</label>
+                <input type="text" id="pedidos-client-name" placeholder="Tu identificación">
+            </div>
+            <div class="spa-form-group">
+                <label>Método de Pago:</label>
+                <select id="pedidos-payment-method">
+                    <option value="Pago Móvil" selected>Pago Móvil Bs</option>
+                    <option value="Efectivo (Divisas)">Efectivo (Divisas)</option>
+                </select>
+            </div>
+            <div class="pedidos-total-breakdown">
+                <div style="font-size:11px; color:gray;">Tasa referencial: <span id="pedidos-modal-tasa-display">0.00</span> Bs/$</div>
+                <div style="font-weight:700; color:#1A1A1A; font-size:15px;">Monto Total USD: $<span id="pedidos-modal-total-usd">0.00</span></div>
+                <div style="font-weight:800; color:var(--pedidos-success); font-size:17px;">Monto Total Bs: <span id="pedidos-modal-total-bs">0.00</span> Bs</div>
+            </div>
+            <div style="display:flex; gap:10px; margin-top:15px;">
+                <button class="admin-btn admin-btn-secondary" style="flex:1; padding:10px;" onclick="pedidos_closeConfirmModal()">Volver</button>
+                <button class="pedidos-checkout-btn" style="flex:2; background:#038C4C; font-size:14px; padding:10px;" onclick="pedidos_sendWhatsAppOrder()">Enviar por WhatsApp</button>
+            </div>
+        </div>
+
+        <div class="spa-modal pedidos-ticket-success-view" id="pedidos-modal-success-content" style="max-width:360px;">
+            <div class="pedidos-ticket-badge-success">📋 ¡Comanda Copiada!</div>
+            <h2 id="pedidos-ticket-order-id" style="color:var(--pedidos-header); font-size:22px; font-weight:800; margin-bottom:5px;">Pedido #0000</h2>
+            <p style="font-size: 13px; color: #5A5A5A; margin-bottom:12px;">Se ha copiado el ticket de cocina automáticamente al portapapeles.</p>
+            <div class="pedidos-ticket-receipt-box" id="pedidos-ticket-receipt-text"></div>
+            <button class="pedidos-checkout-btn" style="width:100%; background:var(--pedidos-header); margin-bottom:12px; font-size:14px; padding:12px;" onclick="pedidos_downloadTicketAsImage()">📸 Guardar en Galería</button>
+            <button class="admin-btn admin-btn-secondary" style="width:100%; padding:10px; font-size:13px;" onclick="pedidos_clearCartAndCloseSuccess()">Cerrar e Iniciar Otro</button>
+        </div>
+    </div>
+
+    <div id="servicio-modal-ticket" class="spa-modal-overlay" onclick="if(event.target.id === 'servicio-modal-ticket') this.style.display='none'">
+        <div class="thermal-ticket">
+            <div class="thermal-header">
+                <h3 style="margin:0; font-size:15px;">*** DR PIZZA CBO ***</h3>
+                <p style="margin:3px 0 0 0; font-size:11px;">Auditoría de Control Interno</p>
+            </div>
+            <div id="servicio-ticket-meta"></div>
+            <div style="border-bottom:1px dashed #000; margin:8px 0; font-weight:bold; font-size:12px; display:flex; justify-content:space-between;">
+                <span>DESCRIPCIÓN</span> <span>TOTAL</span>
+            </div>
+            <div id="servicio-ticket-items"></div>
+            <div id="servicio-ticket-totales" class="thermal-total-box"></div>
+            <div id="servicio-ticket-acciones-anulacion" style="margin-top:14px;"></div>
+            <div style="text-align: center; margin-top: 15px;">
+                <button class="admin-btn admin-btn-secondary" style="padding:6px 14px; color:black; border-color:black;" onclick="document.getElementById('servicio-modal-ticket').style.display='none'">Cerrar Visor</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        const SUPABASE_URL = "https://xogzqduwgzvikncepamr.supabase.co";
+        const SUPABASE_ANON_KEY = "sb_publishable_yhBX8IMK7Q36qZSromsqZg_gVY5FeLO"; 
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let global_exchangeRate = 42.00;
+
+        // CONTROLADOR MAESTRO DE RUTAS INTERNES SPA
+        function navegarA(modulo) {
+            document.getElementById('pane-central-hub').style.display = 'none';
+            document.getElementById('pane-pedidos-app').style.display = 'none';
+            document.getElementById('pane-caja-app').style.display = 'none';
+            document.getElementById('pane-reportes-app').style.display = 'none';
+            document.getElementById('pane-servicio-app').style.display = 'none';
+            
+            const backBtn = document.getElementById('global-back-btn');
+
+            if (modulo === 'hub') {
+                document.getElementById('pane-central-hub').style.display = 'block';
+                backBtn.style.display = 'none';
+                document.body.style.backgroundColor = 'var(--bg-main)';
+            } else {
+                backBtn.style.display = 'flex';
+                if (modulo === 'pedidos') {
+                    document.getElementById('pane-pedidos-app').style.display = 'block';
+                    document.body.style.backgroundColor = 'var(--pedidos-bg)';
+                    pedidos_loadDataFromSupabase();
+                } else if (modulo === 'caja') {
+                    document.getElementById('pane-caja-app').style.display = 'block';
+                    document.body.style.backgroundColor = 'var(--bg-main)';
+                    caja_inicializar();
+                } else if (modulo === 'reportes') {
+                    document.getElementById('pane-reportes-app').style.display = 'block';
+                    document.body.style.backgroundColor = 'var(--bg-main)';
+                    reportes_aplicarFiltroRapido('hoy');
+                } else if (modulo === 'servicio') {
+                    document.getElementById('pane-servicio-app').style.display = 'block';
+                    document.body.style.backgroundColor = 'var(--bg-main)';
+                    servicio_inicializar();
+                }
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // ==========================================================================
+        // MÓDULO LOGICIAL: 1. PEDIDOS
+        // ==========================================================================
+        let pedidos_EXTRAS_DATABASE = { pizzas: [], bebidas: [], delivery: [] };
+        let pedidos_MENU_DATA = { pizzas: [], bebidas: [] };
+        let pedidos_cartArray = [];
+        let pedidos_currentPizzaTarget = null;
+        let pedidos_currentModalQty = 1;
+        let pedidos_globalTextOrder = ""; 
+        let pedidos_currentOrderNumForFile = "0000";
+
+        const pedidos_STATIC_DELIVERY_DATA = {
+            id: "d1", name: "Costo de Envío", desc: "Selecciona la zona geográfica para el despacho de tu pedido.",
+            prices: { "Retiro / Pickup": 0.00, "$1.00": 1.00, "$1.50": 1.50, "$2.00": 2.00, "$2.50": 2.50, "$3.00": 3.00, "$3.50": 3.50, "$4.00": 4.00, "$4.50": 4.50, "$5.00": 5.00 }
+        };
+
+        async function pedidos_loadDataFromSupabase() {
+            document.getElementById('pedidos-menu-container').innerHTML = "<div class='spa-loading'>Sincronizando menú digital desde Supabase...</div>";
+            try {
+                const [tasaRes, productosRes, extrasRes] = await Promise.all([
+                    supabaseClient.from('tasa_cambio').select('tasa').eq('id', 1).single(),
+                    supabaseClient.from('productos').select('*').order('id', { ascending: true }),
+                    supabaseClient.from('extras').select('*')
+                ]);
+
+                if (tasaRes.error) throw tasaRes.error;
+                if (productosRes.error) throw productosRes.error;
+                if (extrasRes.error) throw extrasRes.error;
+
+                global_exchangeRate = parseFloat(tasaRes.data.tasa);
+
+                pedidos_MENU_DATA.pizzas = productosRes.data.filter(p => p.category === 'pizzas');
+                pedidos_MENU_DATA.bebidas = productosRes.data.filter(p => p.category === 'bebidas');
+
+                pedidos_EXTRAS_DATABASE.pizzas = extrasRes.data.filter(e => e.category === 'pizzas').map(e => ({ name: e.name, price: parseFloat(e.price) }));
+                pedidos_EXTRAS_DATABASE.bebidas = extrasRes.data.filter(e => e.category === 'bebidas').map(e => ({ name: e.name, price: parseFloat(e.price) }));
+
+                pedidos_renderMenu();
+            } catch (error) {
+                document.getElementById('pedidos-menu-container').innerHTML = "<div class='spa-loading' style='color:red;'>Fallo crítico en red de Supabase.</div>";
+                console.error(error);
+            }
+        }
+
+        function pedidos_renderMenu() {
+            const container = document.getElementById('pedidos-menu-container');
+            let html = '';
+
+            html += `<div id="pedidos-sec-pizzas" class="pedidos-category-section"><h2 class="pedidos-category-title">Nuestras Pizzas</h2>`;
+            pedidos_MENU_DATA.pizzas.forEach(p => {
+                html += `
+                <div class="pedidos-menu-item" id="pedidos-item-card-${p.id}">
+                    <div class="pedidos-item-badge" id="pedidos-badge-${p.id}">0</div>
+                    <h3 class="pedidos-item-title">${p.name}</h3>
+                    <p class="pedidos-item-description">${p.description || ''}</p>
+                    <div class="pedidos-item-options">
+                        ${Object.keys(p.prices).map(size => {
+                            const displayName = size === '125grs' ? 'Unidad' : size;
+                            return `
+                                <div class="pedidos-size-option">
+                                    <div class="pedidos-size-label-container"><span class="pedidos-size-name">${displayName}</span> <span class="pedidos-price-tag">$${p.prices[size].toFixed(2)}</span></div>
+                                    <div class="pedidos-add-controls"><button class="pedidos-extras-btn" onclick="pedidos_openExtras('${p.id}', '${size}', 'pizzas')">+ Agregar</button></div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>`;
+            });
+            html += `</div>`;
+
+            html += `
+            <div id="pedidos-sec-half" class="pedidos-category-section">
+                <h2 class="pedidos-category-title">Combinaciones</h2>
+                <div class="pedidos-menu-item" style="border: 2px dashed #8C0343; background-color: #FFFDF9;">
+                    <h3 class="pedidos-item-title" style="color: #8C0343;">🍕 Crear Pizza Mitad y Mitad</h3>
+                    <p class="pedidos-item-description">Combina dos sabores en una sola pizza. El sistema calculará el precio ponderado proporcional automáticamente.</p>
+                    <div style="text-align: right;">
+                        <button class="pedidos-checkout-btn" style="font-size: 13px; padding: 8px 16px;" onclick="pedidos_openHalfModal()">Armar Combinación</button>
+                    </div>
+                </div>
+            </div>`;
+
+            html += `<div id="pedidos-sec-bebidas" class="pedidos-category-section"><h2 class="pedidos-category-title">Bebidas</h2><div class="pedidos-menu-item">`;
+            pedidos_MENU_DATA.bebidas.forEach(b => {
+                html += `
+                <div style="position:relative; margin-bottom: 10px;" id="pedidos-item-card-${b.id}">
+                    <div class="pedidos-item-badge" id="pedidos-badge-${b.id}" style="top:0; right:0;">0</div>
+                    <div class="pedidos-item-options">
+                        ${Object.keys(b.prices).map(size => `
+                            <div class="pedidos-drink-option">
+                                <div class="pedidos-size-label-container"><span class="pedidos-size-name">${b.name}</span> <span class="pedidos-price-tag">$${b.prices[size].toFixed(2)}</span></div>
+                                <div class="pedidos-add-controls"><button class="pedidos-extras-btn" onclick="pedidos_openExtras('${b.id}', '${size}', 'bebidas')">+ Agregar</button></div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>`;
+            });
+            html += `</div></div>`;
+
+            html += `
+            <div id="pedidos-sec-delivery" class="pedidos-category-section">
+                <h2 class="pedidos-category-title">Controles de Despacho</h2>
+                <div class="pedidos-menu-item" id="pedidos-item-card-${pedidos_STATIC_DELIVERY_DATA.id}">
+                    <div class="pedidos-item-badge" id="pedidos-badge-${pedidos_STATIC_DELIVERY_DATA.id}">0</div>
+                    <h3 class="pedidos-item-title">${pedidos_STATIC_DELIVERY_DATA.name}</h3>
+                    <p class="pedidos-item-description">${pedidos_STATIC_DELIVERY_DATA.desc}</p>
+                    <div style="text-align: center; margin-top: 10px;">
+                        <button class="pedidos-checkout-btn" style="width:100%; max-width:280px; background-color: #8C0343;" onclick="pedidos_openDeliveryModal()">
+                            🛵 Configurar Envío / Pickup
+                        </button>
+                    </div>
+                </div>
+            </div>`;
+
+            container.innerHTML = html;
+            pedidos_updateMenuBadges();
+            pedidos_buildDeliveryModalOptions();
+        }
+
+        function pedidos_buildDeliveryModalOptions() {
+            const container = document.getElementById('pedidos-md-delivery-options');
+            container.innerHTML = '';
+            Object.keys(pedidos_STATIC_DELIVERY_DATA.prices).forEach(tarifa => {
+                const isPickup = tarifa === 'Retiro / Pickup';
+                const labelText = isPickup ? "🏠 Retiro en Local / Pickup" : "🛵 Delivery Regional";
+                const priceText = isPickup ? "$0.00" : tarifa;
+                container.innerHTML += `
+                    <div class="pedidos-delivery-option" style="cursor:pointer;" onclick="pedidos_selectDeliveryOption('${tarifa}')">
+                        <div class="pedidos-size-label-container">
+                            <span class="pedidos-size-name" style="font-size:14px;">${labelText}</span>
+                            <span class="pedidos-price-tag">${priceText}</span>
+                        </div>
+                        <button class="pedidos-extras-btn" style="pointer-events:none;">Elegir</button>
+                    </div>`;
+            });
+        }
+
+        function pedidos_openDeliveryModal() { document.getElementById('pedidos-md-delivery-overlay').style.display = 'flex'; }
+        function pedidos_selectDeliveryOption(tarifa) {
+            pedidos_cartArray = pedidos_cartArray.filter(item => item.category !== 'delivery');
+            pedidos_cartArray.push({
+                cartItemId: `delivery-${tarifa}`, id: pedidos_STATIC_DELIVERY_DATA.id, item: pedidos_STATIC_DELIVERY_DATA.name,
+                size: tarifa, basePrice: pedidos_STATIC_DELIVERY_DATA.prices[tarifa], quantity: 1, extras: [], category: 'delivery'
+            });
+            document.getElementById('pedidos-md-delivery-overlay').style.display = 'none';
+            pedidos_showToast(); pedidos_calculateTotals(); pedidos_updateMenuBadges();
+        }
+
+        function pedidos_openHalfModal() {
+            const selectA = document.getElementById('pedidos-half-pizza-a-select');
+            const selectB = document.getElementById('pedidos-half-pizza-b-select');
+            let optionsHtml = '<option value="" disabled selected>-- Elige Sabor --</option>';
+            pedidos_MENU_DATA.pizzas.forEach(p => { optionsHtml += `<option value="${p.id}">${p.name}</option>`; });
+            selectA.innerHTML = optionsHtml; selectB.innerHTML = optionsHtml;
+            document.getElementById('pedidos-half-size-select').value = "";
+            document.getElementById('pedidos-half-base-price-display').innerText = "0.00";
+            document.getElementById('pedidos-half-extras-section').style.display = 'none';
+            document.getElementById('pedidos-md-half-overlay').style.display = 'flex';
+        }
+        function pedidos_closeHalfModal() { document.getElementById('pedidos-md-half-overlay').style.display = 'none'; }
+
+        function pedidos_updateHalfModalPrices() {
+            const size = document.getElementById('pedidos-half-size-select').value;
+            const idA = document.getElementById('pedidos-half-pizza-a-select').value;
+            const idB = document.getElementById('pedidos-half-pizza-b-select').value;
+            if(!size || !idA || !idB) return;
+            const pizzaA = pedidos_MENU_DATA.pizzas.find(p => p.id === idA);
+            const pizzaB = pedidos_MENU_DATA.pizzas.find(p => p.id === idB);
+            const priceA = pizzaA.prices[size] || pizzaA.prices['Normal'] || 0; 
+            const priceB = pizzaB.prices[size] || pizzaB.prices['Normal'] || 0;
+            const baseCalculated = (priceA + priceB) / 2;
+            document.getElementById('pedidos-half-base-price-display').innerText = baseCalculated.toFixed(2);
+            
+            const extrasContainer = document.getElementById('pedidos-half-dynamic-extras-container');
+            extrasContainer.innerHTML = '';
+            if (pedidos_EXTRAS_DATABASE.pizzas.length > 0) {
+                document.getElementById('pedidos-half-extras-section').style.display = 'block';
+                pedidos_EXTRAS_DATABASE.pizzas.forEach(ex => {
+                    extrasContainer.innerHTML += `
+                        <div class="spa-form-group" style="flex-direction:row; justify-content:space-between; margin-bottom:5px;">
+                            <span style="font-size:13px;">${ex.name} (+$${ex.price.toFixed(2)})</span>
+                            <input type="checkbox" class="pedidos-half-extra-checkbox" value="${ex.name}" data-price="${ex.price}" style="width:18px; height:18px;">
+                        </div>`;
+                });
+            }
+        }
+
+        function pedidos_confirmAddHalfPizza() {
+            const size = document.getElementById('pedidos-half-size-select').value;
+            const idA = document.getElementById('pedidos-half-pizza-a-select').value;
+            const idB = document.getElementById('pedidos-half-pizza-b-select').value;
+            if(!size || !idA || !idB) return alert("Por favor, rellene todos los campos de sabores.");
+            const pizzaA = pedidos_MENU_DATA.pizzas.find(p => p.id === idA);
+            const pizzaB = pedidos_MENU_DATA.pizzas.find(p => p.id === idB);
+            const finalBasePrice = ((pizzaA.prices[size] || 0) + (pizzaB.prices[size] || 0)) / 2;
+            
+            let selectedExtras = [];
+            document.querySelectorAll('.pedidos-half-extra-checkbox').forEach(cb => {
+                if (cb.checked) selectedExtras.push({ name: cb.value, price: parseFloat(cb.getAttribute('data-price')) });
+            });
+            let extrasId = selectedExtras.map(e => e.name).sort().join('|');
+            let comboName = `Pizza Mitad y Mitad [Mitad ${pizzaA.name} / Mitad ${pizzaB.name}]`;
+            let cartItemId = `half-${idA}-${idB}-${size}-${extrasId}`;
+            let existingItem = pedidos_cartArray.find(item => item.cartItemId === cartItemId);
+            if(existingItem) { existingItem.quantity += 1; } else {
+                pedidos_cartArray.push({
+                    cartItemId: cartItemId, id: "1000", item: comboName, size: size, basePrice: finalBasePrice, quantity: 1, extras: selectedExtras, category: 'pizzas'
+                });
+            }
+            pedidos_closeHalfModal(); pedidos_showToast(); pedidos_calculateTotals(); pedidos_updateMenuBadges();
+        }
+
+        function pedidos_scrollToSection(id, element) {
+            document.querySelectorAll('.pedidos-nav-item').forEach(nav => nav.classList.remove('active'));
+            element.classList.add('active');
+            document.getElementById(id)?.scrollIntoView();
+        }
+
+        function pedidos_openExtras(id, size, category) {
+            let prod = pedidos_MENU_DATA[category].find(p => p.id === id); if(!prod) return;
+            pedidos_currentPizzaTarget = { id: prod.id, name: prod.name, size: size, price: prod.prices[size], category: category };
+            pedidos_currentModalQty = 1;
+            document.getElementById('pedidos-modal-item-title').innerText = prod.name;
+            document.getElementById('pedidos-modal-item-subtitle').innerText = `Variación: ${size === '125grs' ? 'Unidad' : size} ($${prod.prices[size].toFixed(2)})`;
+            document.getElementById('pedidos-modal-qty-display').innerText = pedidos_currentModalQty;
+            
+            const extrasContainer = document.getElementById('pedidos-dynamic-extras-container'); extrasContainer.innerHTML = '';
+            const availableExtras = pedidos_EXTRAS_DATABASE[category] || [];
+            if(availableExtras.length === 0) { document.getElementById('pedidos-modal-extras-section').style.display = 'none'; } else {
+                document.getElementById('pedidos-modal-extras-section').style.display = 'block';
+                availableExtras.forEach(ex => {
+                    extrasContainer.innerHTML += `
+                        <div class="spa-form-group" style="flex-direction:row; justify-content:space-between; margin-bottom:5px;">
+                            <span style="font-size:13px;">${ex.name} (+$${ex.price.toFixed(2)})</span>
+                            <input type="checkbox" class="pedidos-extra-checkbox" value="${ex.name}" data-price="${ex.price}" style="width:18px; height:18px;">
+                        </div>`;
+                });
+            }
+            document.getElementById('pedidos-md-extras-overlay').style.display = 'flex';
+        }
+        function pedidos_closeExtrasModal() { document.getElementById('pedidos-md-extras-overlay').style.display = 'none'; }
+
+        function pedidos_confirmAddPizza() {
+            let selectedExtras = [];
+            if (pedidos_currentPizzaTarget.category !== 'delivery') {
+                document.querySelectorAll('.pedidos-extra-checkbox').forEach(cb => {
+                    if (cb.checked) selectedExtras.push({ name: cb.value, price: parseFloat(cb.getAttribute('data-price')) });
+                });
+            }
+            let extrasId = selectedExtras.map(e => e.name).sort().join('|');
+            let cartItemId = `${pedidos_currentPizzaTarget.id}-${pedidos_currentPizzaTarget.size}-${extrasId}`;
+            let existingItem = pedidos_cartArray.find(item => item.cartItemId === cartItemId);
+            if(existingItem) { existingItem.quantity += pedidos_currentModalQty; } else {
+                pedidos_cartArray.push({
+                    cartItemId: cartItemId, id: pedidos_currentPizzaTarget.id, item: pedidos_currentPizzaTarget.name, size: pedidos_currentPizzaTarget.size, basePrice: pedidos_currentPizzaTarget.price, quantity: pedidos_currentModalQty, extras: selectedExtras, category: pedidos_currentPizzaTarget.category
+                });
+            }
+            pedidos_closeExtrasModal(); pedidos_showToast(); pedidos_calculateTotals(); pedidos_updateMenuBadges();
+        }
+
+        function pedidos_updateMenuBadges() {
+            document.querySelectorAll('.pedidos-item-badge').forEach(badge => { badge.innerText = "0"; badge.style.display = "none"; });
+            let counts = {}; pedidos_cartArray.forEach(item => { counts[item.id] = (counts[item.id] || 0) + item.quantity; });
+            Object.keys(counts).forEach(id => {
+                const badge = document.getElementById(`pedidos-badge-${id}`); if(badge) { badge.innerText = counts[id]; badge.style.display = "block"; }
+            });
+        }
+
+        function pedidos_showToast() {
+            const toast = document.getElementById('pedidos-cart-toast'); toast.style.display = 'block';
+            setTimeout(() => { toast.style.display = 'none'; }, 1500);
+        }
+
+        function pedidos_calculateTotals() {
+            let totalItems = 0; let totalUSD = 0; let currentDeliveryPrice = 0; let deliveryText = "🛵 Delivery";
+            pedidos_cartArray.forEach(entry => {
+                totalItems += entry.quantity; let singleCost = entry.basePrice;
+                entry.extras.forEach(ex => singleCost += ex.price); totalUSD += singleCost * entry.quantity;
+                if (entry.category === "delivery") {
+                    currentDeliveryPrice = entry.basePrice;
+                    deliveryText = entry.size === 'Retiro / Pickup' ? "🏠 Pickup" : `Delivery ($${currentDeliveryPrice.toFixed(2)})`;
+                }
+            });
+            let totalVES = totalUSD * global_exchangeRate;
+            document.getElementById('pedidos-cart-count-text').innerText = `${totalItems} ítem(s) en el pedido`;
+            document.getElementById('pedidos-cart-total-value').innerText = totalUSD.toFixed(2);
+            const deliveryTab = document.getElementById('pedidos-nav-delivery-tab'); if (deliveryTab) deliveryTab.innerText = deliveryText;
+            document.getElementById('pedidos-modal-tasa-display').innerText = global_exchangeRate.toFixed(2);
+            document.getElementById('pedidos-modal-total-usd').innerText = totalUSD.toFixed(2);
+            document.getElementById('pedidos-modal-total-bs').innerText = totalVES.toFixed(2);
+        }
+
+        function pedidos_renderCartList() {
+            const listContainer = document.getElementById('pedidos-modal-cart-list'); listContainer.innerHTML = "";
+            if (pedidos_cartArray.length === 0) { listContainer.innerHTML = "<p style='text-align:center; color:gray;'>El carrito está vacío.</p>"; return; }
+            pedidos_cartArray.forEach((entry, index) => {
+                let extrasText = entry.extras.map(e => e.name).join(', ');
+                let displayDetails = entry.category === "delivery" ? "Logística" : (entry.size !== "Única" ? `Tamaño: ${entry.size === '125grs' ? 'Unidad' : entry.size}` : "Bebida");
+                if(extrasText) displayDetails += ` | Extras: ${extrasText}`;
+                const itemRow = document.createElement('div'); itemRow.className = "pedidos-cart-list-item";
+                if(entry.category === "delivery") {
+                    itemRow.innerHTML = `
+                        <div class="pedidos-cart-item-info"><span class="pedidos-cart-item-name">${entry.item}</span><span class="pedidos-cart-item-details">${entry.size}</span></div>
+                        <div class="pedidos-add-controls"><span class="pedidos-price-tag" style="padding-right:10px;">$${entry.basePrice.toFixed(2)}</span></div>`;
+                } else {
+                    itemRow.innerHTML = `
+                        <div class="pedidos-cart-item-info"><span class="pedidos-cart-item-name">${entry.item}</span><span class="pedidos-cart-item-details">${displayDetails}</span></div>
+                        <div class="pedidos-add-controls"><button class="pedidos-quantity-control" onclick="pedidos_updateCartIndexCount(${index}, -1)">-</button><span class="pedidos-quantity-count">${entry.quantity}</span><button class="pedidos-quantity-control" onclick="pedidos_updateCartIndexCount(${index}, 1)">+</button></div>`;
+                }
+                listContainer.appendChild(itemRow);
+            });
+        }
+
+        function pedidos_updateCartIndexCount(index, change) {
+            pedidos_cartArray[index].quantity += change; if (pedidos_cartArray[index].quantity <= 0) pedidos_cartArray.splice(index, 1);
+            pedidos_calculateTotals(); pedidos_renderCartList(); pedidos_updateMenuBadges();
+        }
+
+        function pedidos_openConfirmModal() { 
+            if (pedidos_cartArray.length === 0) return alert("Tu pedido está vacío."); 
+            document.getElementById('pedidos-modal-checkout-content').style.display = 'block'; document.getElementById('pedidos-modal-success-content').style.display = 'none';
+            pedidos_renderCartList(); pedidos_calculateTotals(); document.getElementById('pedidos-md-confirm-overlay').style.display = 'flex'; 
+        }
+        function pedidos_closeConfirmModal() { document.getElementById('pedidos-md-confirm-overlay').style.display = 'none'; }
+
+        // NAVEGACIÓN Y HISTÓRICO CRM CLIENTES DESDE LA BASE DE DATOS
+        async function pedidos_consultarTelefonoCRM() {
+            const phone = document.getElementById('pedidos-client-phone').value.trim();
+            if (phone.length < 7) return; 
+            try {
+                const { data, error } = await supabaseClient.from('pedidos').select('client_name').eq('client_phone', phone).neq('estado', 'Cancelado').order('created_at', { ascending: false }).limit(1);
+                if (!error && data && data.length > 0) {
+                    document.getElementById('pedidos-client-name').value = data[0].client_name;
+                }
+            } catch (e) { console.error("Error consultando histórico CRM:", e); }
+        }
+
+        async function pedidos_sendWhatsAppOrder() {
+            const nameRaw = document.getElementById('pedidos-client-name').value.trim();
+            const phoneRaw = document.getElementById('pedidos-client-phone').value.trim();
+            const payment = document.getElementById('pedidos-payment-method').value;
+            if (!nameRaw || !phoneRaw) return alert("Rellene nombre y teléfono.");
+            
+            let digitsOnly = phoneRaw.replace(/\D/g, '');
+            const finalPhone = phoneRaw.startsWith('+') ? '+' + digitsOnly : digitsOnly;
+            const name = nameRaw.replace(/[图形<>:"/\\|?*]/g, '');
+
+            const now = new Date();
+            const orderNumber = `${String(now.getDate()).padStart(2, '0')}${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
+            pedidos_currentOrderNumForFile = orderNumber;
+
+            let message = `*Dr Pizza Cbo - Pedido #${orderNumber}*\n\n👤 *Cliente:* ${name}\n📱 *Teléfono:* ${finalPhone}\n💰 *Pago:* ${payment}\n\n*🛍️ DETALLE:*\n\n`;
+            let ticketHtml = `<strong>Dr Pizza Cbo - Pedido #${orderNumber}</strong><br><br><strong>Cliente:</strong> ${name}<br><strong>Pago:</strong> ${payment}<br><br>--- DETALLE ---<br>`;
+            let totalUSD = 0; let deliveryEntry = null;
+
+            const cartPayload = pedidos_cartArray.map(item => ({
+                id: isNaN(item.id) ? 1000 : parseInt(item.id), item: item.item, size: item.size, quantity: parseInt(item.quantity), category: item.category.toLowerCase(), basePrice: parseFloat(item.basePrice), extras: item.extras
+            }));
+
+            pedidos_cartArray.forEach((entry) => {
+                if(entry.category === 'delivery') { deliveryEntry = entry; return; }
+                let singleCost = entry.basePrice;
+                let extrasNames = entry.extras.map(e => { singleCost += e.price; return e.name; });
+                let subtotal = singleCost * entry.quantity; totalUSD += subtotal;
+                message += `▪️ *${entry.quantity}x* ${entry.item} (${entry.size}) -> _$${subtotal.toFixed(2)}_\n`;
+                ticketHtml += `• ${entry.quantity}x ${entry.item} (${entry.size}) -> $${subtotal.toFixed(2)}<br>`;
+                if (extrasNames.length > 0) { message += `   _Extras: ${extrasNames.join(', ')}_\n`; ticketHtml += `   <i>Extras: ${extrasNames.sort().join(', ')}</i><br>`; }
+                message += `\n`;
+            });
+
+            if(deliveryEntry) {
+                totalUSD += deliveryEntry.basePrice;
+                message += `🛵 *Entrega:* ${deliveryEntry.size} ($${deliveryEntry.basePrice.toFixed(2)})\n\n`;
+                ticketHtml += `🛵 Entrega: ${deliveryEntry.size} ($${deliveryEntry.basePrice.toFixed(2)})<br>`;
+            }
+
+            let totalVES = totalUSD * global_exchangeRate;
+            message += `-----------------------------\n💵 *TOTAL USD:* $${totalUSD.toFixed(2)}\n📉 *TOTAL BS:* *${totalVES.toFixed(2)} Bs*`;
+            ticketHtml += `-------------------------<br><strong>Total USD:</strong> $${totalUSD.toFixed(2)}<br><strong>Total Bs:</strong> ${totalVES.toFixed(2)} Bs`;
+
+            supabaseClient.from('pedidos').insert([{
+                id: parseInt(orderNumber), client_name: name, client_phone: finalPhone, payment_method: payment, cart: cartPayload, total_usd: parseFloat(totalUSD.toFixed(2)), total_bs: parseFloat(totalVES.toFixed(2)), exchange_rate: global_exchangeRate, estado: 'Pendiente'
+            }]).then(({error}) => { if(error) console.error(error); });
+
+            pedidos_globalTextOrder = message;
+            if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(message).catch(() => {}); }
+            document.getElementById('pedidos-ticket-order-id').innerText = `Pedido #${orderNumber}`;
+            document.getElementById('pedidos-ticket-receipt-text').innerHTML = ticketHtml;
+            document.getElementById('pedidos-modal-checkout-content').style.display = 'none'; document.getElementById('pedidos-modal-success-content').style.display = 'block';
+            window.open("https://wa.me/584148939935?text=" + encodeURIComponent(message), '_blank');
+        }
+
+        function pedidos_downloadTicketAsImage() {
+            const btn = document.querySelector("button[onclick='pedidos_downloadTicketAsImage()']");
+            html2canvas(document.getElementById('pedidos-ticket-receipt-text'), { backgroundColor: '#FFFDF9', scale: 2, logging: false, useCORS: true }).then(canvas => {
+                const downloadLink = document.createElement('a'); downloadLink.href = canvas.toDataURL("image/png");
+                downloadLink.download = `Ticket_${pedidos_currentOrderNumForFile}.png`; downloadLink.click();
+                btn.style.backgroundColor = "#038C4C"; btn.innerHTML = "✅ ¡Guardado! 📸";
+            });
+        }
+
+        function pedidos_clearCartAndCloseSuccess() {
+            pedidos_cartArray = []; pedidos_calculateTotals(); pedidos_updateMenuBadges(); document.getElementById('pedidos-md-confirm-overlay').style.display = 'none';
+            document.getElementById('pedidos-client-name').value = ""; document.getElementById('pedidos-client-phone').value = "";
+        }
+
+        // ==========================================================================
+        // MÓDULO LOGICIAL: 2. CAJA
+        // ==========================================================================
+        function caja_inicializar() {
+            const hoy = new Date();
+            document.getElementById('caja-fecha-input').value = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
+            caja_cargarCierre();
+        }
+
+        async function caja_cargarCierre() {
+            const fechaVal = document.getElementById('caja-fecha-input').value; if (!fechaVal) return alert("Fecha inválida.");
+            document.getElementById('caja-loading-view').style.display = 'block';
+            document.getElementById('caja-results-container').style.display = 'none';
+
+            const inicioDia = `${fechaVal}T04:00:00.000Z`;
+            const finObj = new Date(fechaVal + 'T00:00:00'); finObj.setDate(finObj.getDate() + 1);
+            const finDia = `${finObj.getFullYear()}-${String(finObj.getMonth() + 1).padStart(2, '0')}-${String(finObj.getDate()).padStart(2, '0')}T03:59:59.999Z`;
+
+            try {
+                const { data, error } = await supabaseClient.from('pedidos').select('*').gte('created_at', inicioDia).lte('created_at', finDia).neq('estado', 'Cancelado').order('created_at', { ascending: true });
+                if (error) throw error;
+
+                let bUSD = 0, bBs = 0, netoUSD = 0, delivUSD = 0, pmUSD = 0, efUSD = 0;
+                const tbody = document.getElementById('caja-tabla-cuerpo'); tbody.innerHTML = '';
+
+                if (data.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-secondary);">No se registraron ventas en este día.</td></tr>`;
+                } else {
+                    data.forEach(p => {
+                        const totalUSD = parseFloat(p.total_usd) || 0;
+                        const totalBs = parseFloat(p.total_bs) || 0;
+                        let delivPedUSD = 0;
+
+                        if (p.cart) {
+                            const parsedCart = typeof p.cart === 'string' ? JSON.parse(p.cart) : p.cart;
+                            const items = Array.isArray(parsedCart) ? parsedCart : (parsedCart.items || []);
+                            items.forEach(i => { if (i.category === 'delivery') delivPedUSD = parseFloat(i.basePrice || i.price) || 0; });
+                        }
+
+                        bUSD += totalUSD; bBs += totalBs; delivUSD += delivPedUSD; netoUSD += (totalUSD - delivPedUSD);
+                        if (p.payment_method === "Pago Móvil") pmUSD += totalUSD; else efUSD += totalUSD;
+
+                        tbody.innerHTML += `<tr><td style="font-family:monospace; font-weight:bold; color:var(--brand-red);">#${p.id}</td><td>${p.client_name}</td><td><span class="admin-badge ${p.payment_method==='Pago Móvil'?'admin-badge-success':'admin-badge-warn'}">${p.payment_method}</span></td><td style="font-weight:bold;">$${totalUSD.toFixed(2)}</td></tr>`;
+                    });
+                }
+
+                document.getElementById('caja-m-banco-usd').innerText = `$${bUSD.toFixed(2)}`;
+                document.getElementById('caja-m-banco-bs').innerText = `${bBs.toFixed(2)} Bs`;
+                document.getElementById('caja-m-neto-usd').innerText = `$${netoUSD.toFixed(2)}`;
+                document.getElementById('caja-m-delivery-usd').innerText = `$${delivUSD.toFixed(2)}`;
+                document.getElementById('caja-m-pmovil').innerText = `$${pmUSD.toFixed(2)}`;
+                document.getElementById('caja-m-efectivo').innerText = `$${efUSD.toFixed(2)}`;
+                document.getElementById('caja-m-cantidad').innerText = `${data.length} comanda(s)`;
+
+                document.getElementById('caja-loading-view').style.display = 'none';
+                document.getElementById('caja-results-container').style.display = 'block';
+            } catch (err) { console.error(err); }
+        }
+
+        // ==========================================================================
+        // MÓDULO LOGICIAL: 3. REPORTES
+        // ==========================================================================
+        let reportes_vistaActual = 'productos';
+        function reportes_limpiarNumero(v) { return !v ? 0 : (typeof v === 'number' ? v : parseFloat(String(v).replace(/[^0-9.-]+/g, "")) || 0); }
+        function reportes_getFechaVET(offset = 0) { return new Date(new Date().getTime() - (4 * 60 * 60 * 1000) + (offset * 24 * 60 * 60 * 1000)).toISOString().split('T')[0]; }
+
+        function reportes_aplicarFiltroRapido(periodo) {
+            document.querySelectorAll('#pane-reportes-app .admin-tab-trigger').forEach(b => b.classList.remove('active'));
+            document.getElementById('reportes-fast-' + periodo)?.classList.add('active');
+            const ini = document.getElementById('reportes-fecha-inicio'); const fin = document.getElementById('reportes-fecha-fin');
+            const hoy = reportes_getFechaVET();
+
+            if (periodo === 'hoy') { ini.value = hoy; fin.value = hoy; }
+            else if (periodo === 'ayer') { const ayer = reportes_getFechaVET(-1); ini.value = ayer; fin.value = ayer; }
+            else if (periodo === 'semana') { const d = new Date().getDay(); ini.value = reportes_getFechaVET(d === 0 ? -6 : 1 - d); fin.value = hoy; }
+            else if (periodo === 'mes') { ini.value = `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}-01`; fin.value = hoy; }
+            reportes_ejecutarConsultaActual();
+        }
+
+        function reportes_desmarcarRapidos() { document.querySelectorAll('#pane-reportes-app .admin-tab-trigger').forEach(b => { if(b.id.includes('fast')) b.classList.remove('active'); }); }
+        function reportes_cambiarVista(tipo) {
+            reportes_vistaActual = tipo;
+            ['productos', 'clientes', 'detalles'].forEach(t => {
+                document.getElementById(`reportes-tab-${t}`).classList.toggle('active', t === tipo);
+                document.getElementById(`reportes-sec-${t}`).classList.toggle('active', t === tipo);
+            });
+            reportes_ejecutarConsultaActual();
+        }
+
+        function reportes_ejecutarConsultaActual() {
+            if (reportes_vistaActual === 'productos') reportes_cargarReporteProductos();
+            else if (reportes_vistaActual === 'clientes') reportes_cargarReporteClientes();
+            else reportes_cargarReporteDetalles();
+        }
+
+        function reportes_obtenerRangosISO() {
+            const i = document.getElementById('reportes-fecha-inicio').value; const f = document.getElementById('reportes-fecha-fin').value;
+            if(!i || !f) return null;
+            const iniObj = new Date(i + 'T00:00:00'); iniObj.setHours(iniObj.getHours() + 4);
+            const finObj = new Date(f + 'T00:00:00'); finObj.setDate(finObj.getDate() + 1); finObj.setHours(3,59,59,999); finObj.setHours(finObj.getHours() + 4);
+            return { inicio: iniObj.toISOString(), fin: finObj.toISOString() };
+        }
+
+        async function reportes_cargarReporteProductos() {
+            const body = document.getElementById('reportes-body-cantidades'); const foot = document.getElementById('reportes-foot-cantidades');
+            const rangos = reportes_obtenerRangosISO(); if (!rangos) return;
+            body.innerHTML = '<tr><td colspan="6" style="text-align:center;">Procesando datos...</td></tr>'; foot.innerHTML = '';
+
+            try {
+                const { data, error } = await supabaseClient.from('pedidos').select('cart').gte('created_at', rangos.inicio).lte('created_at', rangos.fin).neq('estado', 'Cancelado');
+                if (error) throw error;
+
+                const mapeo = {}; let tFam = 0, tMed = 0, tNor = 0, tSal = 0, tGen = 0;
+                data.forEach(p => {
+                    if (p.cart) {
+                        const parsed = typeof p.cart === 'string' ? JSON.parse(p.cart) : p.cart;
+                        const items = Array.isArray(parsed) ? parsed : (parsed.items || []);
+                        items.forEach(item => {
+                            if (!item || item.category === 'delivery') return;
+                            const name = item.item ? item.item.trim() : 'Genérico';
+                            let sz = item.size ? String(item.size).toLowerCase() : '';
+                            const c = parseInt(item.quantity || 0);
+
+                            if (!mapeo[name]) mapeo[name] = { nombre: name, familiar: 0, mediana: 0, normal: 0, salchi: 0, total: 0 };
+                            if (sz==='familiar' || sz==='f') { mapeo[name].familiar+=c; tFam+=c; }
+                            else if (sz==='mediana' || sz==='m') { mapeo[name].mediana+=c; tMed+=c; }
+                            else if (sz==='normal') { mapeo[name].normal+=c; tNor+=c; }
+                            else { mapeo[name].salchi+=c; tSal+=c; }
+                            mapeo[name].total += c; tGen += c;
+                        });
+                    }
+                });
+
+                body.innerHTML = '';
+                const sorted = Object.values(mapeo).sort((a,b) => b.total - a.total);
+                if(sorted.length===0) { body.innerHTML = '<tr><td colspan="6" style="text-align:center;">Sin registros.</td></tr>'; return; }
+                sorted.forEach(p => {
+                    body.innerHTML += `<tr><td><b>${p.nombre}</b></td><td>${p.familiar||'-'}</td><td>${p.mediana||'-'}</td><td>${p.normal||'-'}</td><td>${p.salchi||'-'}</td><td style="color:var(--brand-red); font-weight:bold;">${p.total} uds</td></tr>`;
+                });
+                foot.innerHTML = `<tr class="admin-row-total"><td>TOTALES:</td><td>${tFam}</td><td>${tMed}</td><td>${tNor}</td><td>${tSal}</td><td style="color:var(--brand-red);">${tGen} uds</td></tr>`;
+            } catch (err) { console.error(err); }
+        }
+
+        async function reportes_cargarReporteClientes() {
+            const body = document.getElementById('reportes-body-clientes'); const foot = document.getElementById('reportes-foot-clientes');
+            const rangos = reportes_obtenerRangosISO(); if (!rangos) return;
+            body.innerHTML = '<tr><td colspan="4" style="text-align:center;">Sincronizando...</td></tr>'; foot.innerHTML = '';
+
+            try {
+                const { data, error } = await supabaseClient.from('pedidos').select('id, client_name, payment_method, total_usd').gte('created_at', rangos.inicio).lte('created_at', rangos.fin).neq('estado', 'Cancelado').order('created_at', { ascending: true });
+                if (error) throw error;
+
+                body.innerHTML = ''; let sum = 0;
+                if(data.length===0) { body.innerHTML = '<tr><td colspan="4" style="text-align:center;">Sin registros.</td></tr>'; return; }
+                data.forEach(p => {
+                    const val = reportes_limpiarNumero(p.total_usd); sum += val;
+                    body.innerHTML += `<tr><td style="font-family:monospace; font-weight:bold;">#${p.id}</td><td>${p.client_name}</td><td><span class="admin-badge ${p.payment_method==='Pago Móvil'?'admin-badge-success':'admin-badge-warn'}">${p.payment_method}</span></td><td style="font-weight:bold;">$${val.toFixed(2)}</td></tr>`;
+                });
+                foot.innerHTML = `<tr class="admin-row-total"><td colspan="3" style="text-align:right;">TOTAL ACUMULADO CAJA:</td><td style="color:var(--color-success); font-weight:bold;">$${sum.toFixed(2)}</td></tr>`;
+            } catch (err) { console.error(err); }
+        }
+
+        async function reportes_cargarReporteDetalles() {
+            const body = document.getElementById('reportes-body-detalles'); const foot = document.getElementById('reportes-foot-detalles');
+            const rangos = reportes_obtenerRangosISO(); if (!rangos) return;
+            body.innerHTML = '<tr><td colspan="4" style="text-align:center;">Sincronizando...</td></tr>'; foot.innerHTML = '';
+
+            try {
+                const { data, error } = await supabaseClient.from('pedidos').select('id, client_name, cart, total_usd, client_phone').gte('created_at', rangos.inicio).lte('created_at', rangos.fin).neq('estado', 'Cancelado');
+                if (error) throw error;
+
+                body.innerHTML = ''; let sDeliv = 0, sGen = 0;
+                if(data.length===0) { body.innerHTML = '<tr><td colspan="4" style="text-align:center;">Sin despachos.</td></tr>'; return; }
+                data.forEach(p => {
+                    const tot = reportes_limpiarNumero(p.total_usd); sGen += tot;
+                    let delivMonto = 0;
+                    if (p.cart) {
+                        const parsed = typeof p.cart === 'string' ? JSON.parse(p.cart) : p.cart;
+                        const items = Array.isArray(parsed) ? parsed : (parsed.items || []);
+                        items.forEach(i => { if (i.category === 'delivery') delivMonto = reportes_limpiarNumero(i.basePrice || i.price); });
+                    }
+                    sDeliv += delivMonto;
+                    body.innerHTML += `<tr><td style="font-family:monospace; color:var(--color-info); font-weight:bold;">${p.client_phone||'N/A'}</td><td>${p.client_name}</td><td style="color:var(--color-warn); font-weight:600;">${delivMonto>0?'$'+delivMonto.toFixed(2):'Pickup'}</td><td style="font-weight:bold;">$${tot.toFixed(2)}</td></tr>`;
+                });
+                foot.innerHTML = `<tr class="admin-row-total"><td colspan="2" style="text-align:right;">TOTALES LOGÍSTICA:</td><td style="color:var(--color-warn);">$${sDeliv.toFixed(2)}</td><td style="color:var(--color-success);">$${sGen.toFixed(2)}</td></tr>`;
+            } catch (err) { console.error(err); }
+        }
+
+        // ==========================================================================
+        // MÓDULO LOGICIAL: 4. SERVICIO
+        // ==========================================================================
+        let servicio_cacheHistorial = [];
+        let servicio_pedidosEncontrados = [];
+
+        function servicio_inicializar() {
+            servicio_obtenerTasaActual();
+            const hoy = new Date().toISOString().split('T')[0];
+            document.getElementById('servicio-crm-inicio').value = hoy;
+            document.getElementById('servicio-crm-fin').value = hoy;
+        }
+
+        async function servicio_validarPin() {
+            const pin = prompt("🔒 Introduce el PIN de Seguridad para autorizar la acción administrativa:");
+            if (!pin) return false;
+            try {
+                const { data, error } = await supabaseClient.from('tasa_cambio').select('pin_seguridad').eq('id', 1).single();
+                if (error || !data) return false;
+                return String(data.pin_seguridad).trim() === String(pin).trim();
+            } catch (e) { return false; }
+        }
+
+        function servicio_cambiarVista(tipo) {
+            document.querySelectorAll('#pane-servicio-app .admin-tab-trigger').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('#pane-servicio-app .admin-tab-pane').forEach(p => p.classList.remove('active'));
+            
+            const botonActivo = document.getElementById('servicio-btn-tab-' + tipo);
+            if (botonActivo) botonActivo.classList.add('active');
+            
+            const panelActivo = document.getElementById('servicio-pane-' + tipo);
+            if (panelActivo) panelActivo.classList.add('active');
+            
+            if(tipo === 'pendientes') servicio_cargarBandejaPendientes();
+            if(tipo === 'tasa') servicio_obtenerTasaActual();
+            if(tipo === 'masa') servicio_obtenerLotesMasa();
+        }
+
+        async function servicio_cargarBandejaPendientes() {
+            const container = document.getElementById('servicio-contenedor-pendientes');
+            const btnM = document.getElementById('servicio-btn-maestro-procesar'); btnM.style.display = 'none';
+            container.innerHTML = '<div style="color:var(--text-secondary);">Descargando comanda en cola de producción...</div>';
+
+            try {
+                const { data, error } = await supabaseClient.from('pedidos').select('*').or('estado.eq.Pendiente,estado.is.null').order('created_at', { ascending: false });
+                if (error) throw error;
+                if(data.length===0) { container.innerHTML = '<div style="color:var(--color-success); font-weight:600; padding:10px;">🎉 Cocina al día. Sin órdenes pendientes.</div>'; return; }
+                
+                container.innerHTML = '';
+                data.forEach(p => {
+                    container.innerHTML += `
+                        <div class="servicio-card-ticket" id="servicio-card-ord-${p.id}">
+                            <input type="checkbox" class="servicio-chk-pedido" value="${p.id}" onchange="servicio_actualizarContadorBloque()" style="width:18px; height:18px; accent-color:var(--color-success);">
+                            <div class="servicio-card-meta">
+                                <span style="color:var(--color-warn); font-weight:bold;">#${p.id}</span> - <b>${p.client_name}</b><br>
+                                📱 Telf: ${p.client_phone || 'N/A'}<br> Total: <span style="color:var(--color-success); font-weight:bold;">$${p.total_usd.toFixed(2)}</span>
+                                <div style="display:flex; gap:6px; margin-top:8px;">
+                                    <button class="pedidos-extras-btn" style="border-color:var(--color-success); color:var(--color-success);" onclick="servicio_cambiarEstatusDirecto(${p.id}, 'procesado')">Procesar</button>
+                                    <button class="pedidos-extras-btn" style="border-color:var(--brand-red); color:var(--brand-red);" onclick="servicio_anularDesdeTarjeta(${p.id})">Anular</button>
+                                </div>
+                            </div>
+                        </div>`;
+                });
+            } catch(e) { container.innerHTML = 'Error de conexión remota.'; }
+        }
+
+        function servicio_actualizarContadorBloque() {
+            const l = document.querySelectorAll('.servicio-chk-pedido:checked').length;
+            const btn = document.getElementById('servicio-btn-maestro-procesar');
+            if(l>0) { btn.innerText = `✔️ Procesar Órdenes Seleccionadas (${l})`; btn.style.display = 'block'; }
+            else btn.style.display = 'none';
+        }
+
+        async function servicio_cambiarEstatusDirecto(id, state) {
+            if (!await servicio_validarPin()) return alert("PIN incorrecto.");
+            try {
+                await supabaseClient.from('pedidos').update({ estado: state }).eq('id', id);
+                document.getElementById(`servicio-card-ord-${id}`)?.remove();
+                servicio_actualizarContadorBloque();
+            } catch(e) {}
+        }
+
+        async function servicio_procesarPedidosEnBloque() {
+            const ids = Array.from(document.querySelectorAll('.servicio-chk-pedido:checked')).map(cb => parseInt(cb.value));
+            if (!await servicio_validarPin()) return alert("PIN incorrecto.");
+            try {
+                await supabaseClient.from('pedidos').update({ estado: 'procesado' }).in('id', ids);
+                ids.forEach(id => document.getElementById(`servicio-card-ord-${id}`)?.remove());
+                servicio_actualizarContadorBloque();
+            } catch(e) {}
+        }
+
+        async function servicio_anularDesdeTarjeta(id) {
+            if (!confirm("Anular comanda?")) return;
+            if (!await servicio_validarPin()) return alert("PIN incorrecto.");
+            try {
+                await supabaseClient.from('pedidos').update({ estado: 'Cancelado' }).eq('id', id);
+                document.getElementById(`servicio-card-ord-${id}`)?.remove();
+                servicio_actualizarContadorBloque();
+            } catch(e) {}
+        }
+
+        async function servicio_obtenerTasaActual() {
+            try {
+                const { data } = await supabaseClient.from('tasa_cambio').select('tasa').eq('id',1).single();
+                global_exchangeRate = parseFloat(data.tasa);
+                document.getElementById('servicio-txt-tasa-actual').innerText = global_exchangeRate.toFixed(2);
+                document.getElementById('servicio-txt-tasa-header').innerText = global_exchangeRate.toFixed(2);
+            } catch(e){}
+        }
+
+        async function servicio_actualizarTasaSistema() {
+            const v = document.getElementById('servicio-input-nueva-tasa').value.trim(); if(!v) return;
+            if(!await servicio_validarPin()) return alert("PIN denegado.");
+            try {
+                await supabaseClient.from('tasa_cambio').update({ tasa: v, updated_at: new Date().toISOString() }).eq('id',1);
+                document.getElementById('servicio-input-nueva-tasa').value = '';
+                servicio_obtenerTasaActual();
+            } catch(e){}
+        }
+
+        async function servicio_obtenerLotesMasa() {
+            const container = document.getElementById('servicio-contenedor-lotes-masa'); container.innerHTML = 'Leyendo...';
+            try {
+                const { data } = await supabaseClient.from('produccion_lotes').select('*').order('lote_id', { ascending: true });
+                container.innerHTML = '';
+                data.forEach(l => {
+                    container.innerHTML += `
+                        <div class="admin-metric-card ${l.activo?'m-success':''}" style="text-align:left;">
+                            <span class="admin-metric-label">LOTE ${l.lote_id} ${l.activo?'[ACTIVO]':''}</span>
+                            <div style="font-size:12px; color:var(--text-secondary); line-height:1.6; margin-bottom:10px;">
+                                Normales: <b>${l.normales_restantes}</b>/${l.normales_producidos}<br>
+                                Medianos: <b>${l.medianos_restantes}</b>/${l.medianos_producidos}<br>
+                                Salchi: <b>${l.salchi_restantes}</b>/${l.salchi_producidos}<br>
+                                Familiar: <b>${l.familiar_restantes}</b>/${l.familiar_producidos}
+                            </div>
+                            <button class="admin-btn" style="width:100%; font-size:11px; padding:6px;" ${l.activo?'disabled':''} onclick="servicio_activarLoteSistema(${l.lote_id})">Inicializar</button>
+                        </div>`;
+                });
+            } catch(e){}
+        }
+
+        async function servicio_activarLoteSistema(id) {
+            if(!await servicio_validarPin()) return alert("PIN inválido.");
+            try {
+                await supabaseClient.rpc('activar_lote', { lote_a_activar: id });
+                servicio_obtenerLotesMasa();
+            } catch(e){}
+        }
+
+        async function servicio_cargarMasaLoteActivo() {
+            const n = parseInt(document.getElementById('servicio-input-prod-normales').value)||0;
+            const m = parseInt(document.getElementById('servicio-input-prod-medianos').value)||0;
+            const s = parseInt(document.getElementById('servicio-input-prod-salchi').value)||0;
+            const f = parseInt(document.getElementById('servicio-input-prod-familiar').value)||0;
+            if(!await servicio_validarPin()) return alert("PIN denegado.");
+
+            try {
+                await supabaseClient.from('produccion_lotes').update({ normales_producidos: n, normales_restantes: n, medianos_producidos: m, medianos_restantes: m, salchi_producidos: s, salchi_restantes: s, familiar_producidos: f, family_restantes: f, ultima_actualizacion: new Date().toISOString() }).eq('activo', true);
+                alert("Abastecimiento completado."); servicio_obtenerLotesMasa();
+            } catch(e){}
+        }
+
+        async function servicio_buscarPedidos() {
+            const qStr = document.getElementById('servicio-input-buscar').value.trim(); const list = document.getElementById('servicio-lista-resultados');
+            if(qStr.length < 1) return; list.innerHTML = 'Buscando...'; list.style.display = 'block';
+
+            try {
+                let query = supabaseClient.from('pedidos').select('*');
+                if(/^\d+$/.test(qStr) && qStr.length<=6) query = query.eq('id', parseInt(qStr));
+                else if(/^\d+$/.test(qStr)) query = query.ilike('client_phone', `%${qStr}%`);
+                else query = query.ilike('client_name', `%${qStr}%`);
+                
+                const { data } = await query.order('created_at', { ascending: false }).limit(10);
+                servicio_pedidosEncontrados = data; list.innerHTML = '';
+                if(data.length===0) { list.innerHTML = '<div style="padding:10px;">Sin coincidencias.</div>'; return; }
+                data.forEach((p, i) => {
+                    list.innerHTML += `<div class="servicio-dropdown-item" onclick="servicio_cargarFormulario(${i})"><b>#${p.id}</b> - ${p.client_name} ${p.estado==='Cancelado'?'[ANULADO]':''}</div>`;
+                });
+            } catch(e){}
+        }
+
+        async function servicio_buscarTicketDirecto() {
+            const id = document.getElementById('servicio-input-ticket-directo').value.trim(); if(!id) return;
+            try {
+                const { data } = await supabaseClient.from('pedidos').select('*').eq('id', parseInt(id)).single();
+                if(!servicio_cacheHistorial.some(o => o.id === data.id)) servicio_cacheHistorial.push(data);
+                servicio_verTicketId(data.id);
+            } catch(e){ alert("Ticket inexistente."); }
+        }
+
+        async function servicio_cargarFormulario(index) {
+            const reg = servicio_pedidosEncontrados[index];
+            document.getElementById('servicio-edit-id').value = reg.id;
+            document.getElementById('servicio-edit-name').value = reg.client_name;
+            document.getElementById('servicio-edit-phone').value = reg.client_phone || '';
+            document.getElementById('servicio-lista-resultados').style.display = 'none';
+            document.getElementById('servicio-form-edicion').style.display = 'block';
+
+            if (reg.client_phone) {
+                try {
+                    const { data } = await supabaseClient.from('pedidos').select('*').eq('client_phone', reg.client_phone).order('created_at', { ascending: false });
+                    servicio_cacheHistorial = data; let u30 = 0, sumUSD = 0;
+                    data.forEach(p => { if(p.estado!=='Cancelado') { u30++; sumUSD+=p.total_usd; } });
+                    document.getElementById('servicio-stat-mes-cant').innerText = `${u30} pedidos`;
+                    document.getElementById('servicio-stat-mes-monto').innerText = `$${sumUSD.toFixed(2)}`;
+                    
+                    let html = "<b>Historial de Comandas vinculadas:</b><br>";
+                    data.forEach(p => { html += `<span class="badge-pedido-link" onclick="servicio_verTicketId(${p.id})">#${p.id}</span> `; });
+                    document.getElementById('servicio-desglose-mensual').innerHTML = html;
+                } catch(navE) {}
+            }
+        }
+
+        async function servicio_verTicketId(id) {
+            let o = servicio_cacheHistorial.find(x => x.id === id);
+            if(!o) { const { data } = await supabaseClient.from('pedidos').select('*').eq('id', id).single(); o = data; }
+
+            document.getElementById('servicio-ticket-meta').innerHTML = `<div class="thermal-line"><span>NRO:</span><span>#${o.id}</span></div><div class="thermal-line"><span>CLIENTE:</span><span>${o.client_name}</span></div><div class="thermal-line"><span>STATUS:</span><span>${o.estado||'Pendiente'}</span></div>`;
+            const box = document.getElementById('servicio-ticket-items'); box.innerHTML = '';
+            
+            if(o.cart) {
+                const parsed = typeof o.cart === 'string' ? JSON.parse(o.cart) : o.cart;
+                const arr = Array.isArray(parsed) ? parsed : (parsed.items || []);
+                arr.forEach(i => { box.innerHTML += `<div class="thermal-line"><span>${i.quantity}x ${i.item}</span><span>$${((i.basePrice||i.price)*i.quantity).toFixed(2)}</span></div>`; });
+            }
+            document.getElementById('servicio-ticket-totales').innerHTML = `<div class="thermal-line"><span>TOTAL USD:</span><span>$${o.total_usd.toFixed(2)}</span></div>`;
+            
+            const btnBox = document.getElementById('servicio-ticket-acciones-anulacion');
+            if(o.estado !== 'Cancelado') btnBox.innerHTML = `<button class="btn-anular-pedido" style="width:100%;" onclick="servicio_ejecutarAnulacionDeOrden(${o.id})">Anular por Fallo Crítico Financiero</button>`;
+            else btnBox.innerHTML = '<div style="text-align:center; color:red; font-weight:bold; font-size:11px;">TICKET OPERATIVAMENTE ANULADO</div>';
+            document.getElementById('servicio-modal-ticket').style.display = 'block';
+        }
+
+        async function servicio_ejecutarAnulacionDeOrden(id) {
+            if(!await servicio_validarPin()) return alert("PIN denegado.");
+            try {
+                await supabaseClient.from('pedidos').update({ estado: 'Cancelado' }).eq('id', id);
+                document.getElementById('servicio-modal-ticket').style.display = 'none';
+                document.getElementById(`servicio-card-ord-${id}`)?.remove();
+                if(document.getElementById('servicio-input-buscar').value.trim()) servicio_buscarPedidos();
+            } catch(e){}
+        }
+
+        async function servicio_actualizarRegistro() {
+            const id = document.getElementById('servicio-edit-id').value;
+            const n = document.getElementById('servicio-edit-name').value.trim();
+            const p = document.getElementById('servicio-edit-phone').value.trim();
+            if(!await servicio_validarPin()) return alert("PIN incorrecto.");
+            try {
+                await supabaseClient.from('pedidos').update({ client_name: n, client_phone: p }).eq('id', id);
+                servicio_cancelarEdicion();
+            } catch(e){}
+        }
+
+        window.servicio_cargarListadoFrecuencia = async function(modo) {
+            const body = document.getElementById('servicio-body-crm'); 
+            body.innerHTML = '<tr><td colspan="5" style="text-align:center;">Calculando ranking en el servidor...</td></tr>';
+            let ini, fin;
+
+            if(modo === 'mes') {
+                const d = new Date(); 
+                ini = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01T04:00:00.000Z`;
+                const next = new Date(d.getFullYear(), d.getMonth()+1, 1); 
+                fin = `${next.getFullYear()}-${String(next.getMonth()+1).padStart(2,'0')}-01T03:59:59.999Z`;
+            } else {
+                const i = document.getElementById('servicio-crm-inicio').value; 
+                const f = document.getElementById('servicio-crm-fin').value;
+                if (!i || !f) return alert("Por favor, selecciona un rango de fechas.");
+                ini = `${i}T04:00:00.000Z`; 
+                const fObj = new Date(f); fObj.setDate(fObj.getDate()+1);
+                fin = `${fObj.toISOString().split('T')[0]}T03:59:59.999Z`;
+            }
+
+            try {
+                const { data, error } = await supabaseClient.from('pedidos').select('*').gte('created_at', ini).lte('created_at', fin).neq('estado', 'Cancelado');
+                if (error) throw error;
+
+                let crm = {};
+                data.forEach(p => {
+                    let k = p.client_phone ? p.client_phone.trim() : `gen-${p.client_name.trim().toLowerCase()}`;
+                    if(!crm[k]) crm[k] = { nombre: p.client_name, telf: p.client_phone || 'N/A', cant: 0, cash: 0 };
+                    crm[k].cant++; 
+                    crm[k].cash += reportes_limpiarNumero(p.total_usd);
+                });
+
+                let arr = Object.values(crm).sort((a,b) => b.cant !== a.cant ? b.cant - a.cant : b.cash - a.cash);
+                body.innerHTML = '';
+
+                if (arr.length === 0) {
+                    body.innerHTML = '<tr><td colspan="5" style="text-align:center;">No se encontraron pedidos.</td></tr>';
+                    return;
+                }
+
+                arr.forEach((c, i) => {
+                    const montoFormateado = (typeof c.cash === 'number' && !isNaN(c.cash)) ? c.cash.toFixed(2) : '0.00';
+                    body.innerHTML += `<tr>
+                        <td><span class="badge-puesto ${i===0?'top-1':''}">#${i+1}</span></td>
+                        <td><b>${c.nombre}</b></td>
+                        <td>${c.telf}</td>
+                        <td style="text-align:center;">${c.cant} ped.</td>
+                        <td style="color:var(--color-success); font-weight:bold;">$${montoFormateado}</td>
+                    </tr>`;
+                });
+            } catch(e) {
+                body.innerHTML = '<tr><td colspan="5" style="text-align:center;">Error al calcular el ranking.</td></tr>';
+            }
+        }
+
+        function servicio_cancelarEdicion() { document.getElementById('servicio-form-edicion').style.display = 'none'; document.getElementById('servicio-input-buscar').value = ''; }
+
+        // LISTSTNERS DE INYECCIÓN DE CONTROL DINÁMICO DE EVENTOS DEL DOM
+        document.addEventListener("DOMContentLoaded", () => {
+            document.getElementById('pedidos-modal-min-btn').addEventListener('click', () => { pedidos_currentModalQty--; if (pedidos_currentModalQty < 1) pedidos_currentModalQty = 1; document.getElementById('pedidos-modal-qty-display').innerText = pedidos_currentModalQty; });
+            document.getElementById('pedidos-modal-plus-btn').addEventListener('click', () => { pedidos_currentModalQty++; document.getElementById('pedidos-modal-qty-display').innerText = pedidos_currentModalQty; });
+            document.getElementById('pedidos-modal-confirm-btn').addEventListener('click', pedidos_confirmAddPizza);
+            
+            // ESCUCHA REACTIVA CRM EN EL CAMPO CELULAR DE PEDIDOS
+            document.getElementById('pedidos-client-phone').addEventListener('input', pedidos_consultarTelefonoCRM);
+        });
+    </script>
+</body>
+</html>
