@@ -437,7 +437,6 @@
                 <button id="servicio-btn-tab-pendientes" class="admin-tab-trigger" onclick="servicio_cambiarVista('pendientes')">⏳ Cocina Pendiente</button>
                 <button id="servicio-btn-tab-lista" class="admin-tab-trigger" onclick="servicio_cambiarVista('lista')">🏆 Ranking CRM</button>
                 <button id="servicio-btn-tab-tasa" class="admin-tab-trigger" onclick="servicio_cambiarVista('tasa')">💵 Control Tasa</button>
-                <button id="servicio-btn-tab-precios" class="admin-tab-trigger" onclick="servicio_cambiarVista('precios')">💰 Precios</button>
                 <button id="servicio-btn-tab-masa" class="admin-tab-trigger" onclick="servicio_cambiarVista('masa')">🍕 Lotes de Masa</button>
             </div>
 
@@ -535,19 +534,6 @@
                     <button class="admin-btn" style="width:100%; padding:15px; font-size:14px; background: linear-gradient(135deg, var(--brand-red) 0%, var(--brand-red-dark) 100%); box-shadow: 0 4px 15px var(--brand-red-glow);" onclick="servicio_actualizarTasaSistema()">
                         <i class="fa-solid fa-rotate"></i> Sincronizar Tasa de Cambio
                     </button>
-                </div>
-            </div>
-
-            <!-- PANE EXCLUSIVO PARA EDICIÓN DE PRECIOS -->
-            <div id="servicio-pane-precios" class="admin-tab-pane admin-panel-box">
-                <h3 class="admin-panel-title" style="color:var(--color-warn);"><i class="fa-solid fa-tags"></i> Editor Maestro de Precios (Menú Digital)</h3>
-                <p style="font-size:12px; color:var(--text-secondary); margin-bottom:15px;">Modifica los valores del menú (Pizzas, Bebidas y Extras) directamente en Supabase. Requiere PIN de autorización.</p>
-                <div id="servicio-contenedor-precios-items" style="max-height:450px; overflow-y:auto; display:flex; flex-direction:column; gap:12px; background:var(--bg-main); padding:15px; border-radius:10px; border:1px solid var(--border-color);">
-                    <div style="color:var(--text-secondary); text-align:center; padding:20px;">Presiona el botón de abajo para cargar los datos en tiempo real.</div>
-                </div>
-                <div style="display:flex; gap:12px; margin-top:15px;">
-                    <button class="admin-btn admin-btn-secondary" style="flex:1;" onclick="servicio_cargarPreciosEditor()">🔄 Cargar / Refrescar Catálogo</button>
-                    <button id="servicio-btn-guardar-precios" class="admin-btn admin-btn-success" style="flex:2; display:none;" onclick="servicio_guardarPreciosEditor()">💾 Sincronizar Cambios en Supabase</button>
                 </div>
             </div>
 
@@ -703,8 +689,6 @@
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let global_exchangeRate = 42.00;
-        let servicio_cacheProductosEditor = []; 
-        let servicio_cacheExtrasEditor = []; 
 
         // CONTROLADOR MAESTRO DE RUTAS INTERNES SPA
         function navegarA(modulo) {
@@ -1120,7 +1104,7 @@
             }
 
             let totalVES = totalUSD * global_exchangeRate;
-            message += `-----------------------------\n💵 *TOTAL USD:* $${totalUSD.toFixed(2)}\n📊 *TASA:* ${global_exchangeRate.toFixed(2)} Bs/$\n📉 *TOTAL BS:* *${totalVES.toFixed(2)} Bs*`;
+            message += `-----------------------------\n💵 *TOTAL USD:* $${totalUSD.toFixed(2)}\n📉 *TOTAL BS:* *${totalVES.toFixed(2)} Bs*`;
             ticketHtml += `-------------------------<br><strong>Total USD:</strong> $${totalUSD.toFixed(2)}<br><strong>Total Bs:</strong> ${totalVES.toFixed(2)} Bs`;
 
             supabaseClient.from('pedidos').insert([{
@@ -1313,7 +1297,7 @@
 
         async function reportes_cargarReporteDetalles() {
             const body = document.getElementById('reportes-body-detalles'); const foot = document.getElementById('reportes-foot-detalles');
-            const rangos = reportes_obtenerRangesISO(); if (!rangos) return;
+            const rangos = reportes_obtenerRangosISO(); if (!rangos) return;
             body.innerHTML = '<tr><td colspan="4" style="text-align:center;">Sincronizando...</td></tr>'; foot.innerHTML = '';
 
             try {
@@ -1372,7 +1356,6 @@
             
             if(tipo === 'pendientes') servicio_cargarBandejaPendientes();
             if(tipo === 'tasa') servicio_obtenerTasaActual();
-            if(tipo === 'precios') servicio_cargarPreciosEditor();
             if(tipo === 'masa') servicio_obtenerLotesMasa();
         }
 
@@ -1457,105 +1440,6 @@
                 document.getElementById('servicio-input-nueva-tasa').value = '';
                 servicio_obtenerTasaActual();
             } catch(e){}
-        }
-
-        // GESTOR COMPLETO DE PRECIOS: PIZZAS, BEBIDAS Y EXTRAS
-        async function servicio_cargarPreciosEditor() {
-            const box = document.getElementById('servicio-contenedor-precios-items');
-            box.innerHTML = '<div style="color:var(--text-secondary); padding:10px; text-align:center;">Descargando menú y extras desde Supabase...</div>';
-            try {
-                const [prodRes, extrasRes] = await Promise.all([
-                    supabaseClient.from('productos').select('*').order('id', { ascending: true }),
-                    supabaseClient.from('extras').select('*').order('id', { ascending: true })
-                ]);
-                
-                if(prodRes.error) throw prodRes.error;
-                if(extrasRes.error) throw extrasRes.error;
-
-                servicio_cacheProductosEditor = prodRes.data;
-                servicio_cacheExtrasEditor = extrasRes.data;
-                box.innerHTML = '';
-                
-                // 1. Renderizar Productos (Pizzas y Bebidas)
-                box.innerHTML += '<div style="font-size:12px; font-weight:800; color:var(--color-info); margin-bottom:5px; text-transform:uppercase;">📦 PRODUCTOS PRINCIPALES (Pizzas / Bebidas)</div>';
-                prodRes.data.forEach(p => {
-                    let preciosHtml = '';
-                    Object.keys(p.prices).forEach(sz => {
-                        preciosHtml += `
-                            <div style="display:flex; align-items:center; gap:6px;">
-                                <span style="font-size:11px; color:var(--text-secondary); width:55px; text-transform:capitalize;">${sz === '125grs' ? 'Unidad' : sz}:</span>
-                                <input type="number" step="0.01" class="admin-input-precio-dinamico" data-tipo="producto" data-item-id="${p.id}" data-size-key="${sz}" value="${p.prices[sz]}" style="padding:4px 6px; font-size:12px; width:75px; background:var(--bg-input); border:1px solid var(--border-color); color:white; border-radius:6px; text-align:center;">
-                            </div>
-                        `;
-                    });
-
-                    box.innerHTML += `
-                        <div style="background:var(--bg-card); padding:10px; border-radius:8px; border:1px solid var(--border-color); display:flex; flex-direction:column; gap:6px; margin-bottom:5px;">
-                            <span style="font-size:12px; font-weight:bold; color:var(--text-primary); text-transform:uppercase;">${p.name} <span style="font-size:10px; color:var(--color-warn);">(${p.category})</span></span>
-                            <div style="display:flex; flex-wrap:wrap; gap:10px;">${preciosHtml}</div>
-                        </div>
-                    `;
-                });
-
-                // 2. Renderizar Extras e Ingredientes Adicionales
-                box.innerHTML += '<div style="font-size:12px; font-weight:800; color:var(--color-info); margin:15px 0 5px 0; text-transform:uppercase;">🍕 INGREDIENTES EXTRAS</div>';
-                extrasRes.data.forEach(e => {
-                    box.innerHTML += `
-                        <div style="background:var(--bg-card); padding:10px; border-radius:8px; border:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
-                            <span style="font-size:12px; font-weight:bold; color:var(--text-primary); text-transform:uppercase;">${e.name} <span style="font-size:10px; color:var(--text-secondary);">(${e.category})</span></span>
-                            <div style="display:flex; align-items:center; gap:6px;">
-                                <span style="font-size:11px; color:var(--text-secondary);">Precio ($):</span>
-                                <input type="number" step="0.01" class="admin-input-precio-dinamico" data-tipo="extra" data-item-id="${e.id}" value="${parseFloat(e.price).toFixed(2)}" style="padding:4px 6px; font-size:12px; width:75px; background:var(--bg-input); border:1px solid var(--border-color); color:white; border-radius:6px; text-align:center;">
-                            </div>
-                        </div>
-                    `;
-                });
-
-                document.getElementById('servicio-btn-guardar-precios').style.display = 'block';
-            } catch(e) { box.innerHTML = '<div style="color:red; padding:10px; text-align:center;">Error al estructurar el catálogo maestro.</div>'; }
-        }
-
-        async function servicio_guardarPreciosEditor() {
-            if(!await servicio_validarPin()) return alert("PIN incorrecto.");
-            const inputs = document.querySelectorAll('.admin-input-precio-dinamico');
-            
-            let mapaProductos = {};
-            let listaExtras = [];
-
-            inputs.forEach(input => {
-                const tipo = input.getAttribute('data-tipo');
-                const id = input.getAttribute('data-item-id');
-                const val = parseFloat(input.value) || 0;
-
-                if (tipo === 'producto') {
-                    const sz = input.getAttribute('data-size-key');
-                    if(!mapaProductos[id]) {
-                        const original = servicio_cacheProductosEditor.find(x => String(x.id) === String(id));
-                        mapaProductos[id] = JSON.parse(JSON.stringify(original.prices));
-                    }
-                    mapaProductos[id][sz] = val;
-                } else if (tipo === 'extra') {
-                    listaExtras.push({ id: parseInt(id), price: val });
-                }
-            });
-
-            try {
-                let promesas = [];
-                
-                // Generar promesas de actualización para productos
-                Object.keys(mapaProductos).forEach(id => {
-                    promesas.push(supabaseClient.from('productos').update({ prices: mapaProductos[id] }).eq('id', parseInt(id)));
-                });
-                
-                // Generar promesas de actualización para extras
-                listaExtras.forEach(item => {
-                    promesas.push(supabaseClient.from('extras').update({ price: item.price }).eq('id', item.id));
-                });
-
-                await Promise.all(promesas);
-                alert("🎉 ¡Precios de Productos, Bebidas y Extras sincronizados en Supabase!");
-                servicio_cargarPreciosEditor();
-            } catch(e) { alert("Error al guardar cambios de precios."); }
         }
 
         async function servicio_obtenerLotesMasa() {
@@ -1754,20 +1638,8 @@
             document.getElementById('pedidos-modal-plus-btn').addEventListener('click', () => { pedidos_currentModalQty++; document.getElementById('pedidos-modal-qty-display').innerText = pedidos_currentModalQty; });
             document.getElementById('pedidos-modal-confirm-btn').addEventListener('click', pedidos_confirmAddPizza);
             
-            // ESCUCHA REACTIVA CRM EN EL CAMPO CELULAR DE PEDIDOS + SANITIZACIÓN EN TIEMPO REAL AL PEGAR/ESCRIBIR
-            document.getElementById('pedidos-client-phone').addEventListener('input', (e) => {
-                let inputVal = e.target.value;
-                let cleanVal = '';
-                if (inputVal.startsWith('+')) {
-                    cleanVal = '+' + inputVal.replace(/[^\d]/g, '');
-                } else {
-                    cleanVal = inputVal.replace(/[^\d]/g, '');
-                }
-                if (inputVal !== cleanVal) {
-                    e.target.value = cleanVal;
-                }
-                pedidos_consultarTelefonoCRM();
-            });
+            // ESCUCHA REACTIVA CRM EN EL CAMPO CELULAR DE PEDIDOS
+            document.getElementById('pedidos-client-phone').addEventListener('input', pedidos_consultarTelefonoCRM);
         });
     </script>
 </body>
