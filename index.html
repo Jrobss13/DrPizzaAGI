@@ -1636,7 +1636,6 @@
             if(!await servicio_validarPin()) return alert("PIN denegado.");
 
             try {
-                // REFACTOR: Corregido 'family_restantes' a 'familiar_restantes' para Supabase
                 const { error } = await supabaseClient.from('produccion_lotes').update({ 
                     normales_producidos: n, 
                     normales_restantes: n, 
@@ -1815,6 +1814,9 @@
             document.getElementById('pedidos-modal-min-btn').addEventListener('click', () => { pedidos_currentModalQty--; if (pedidos_currentModalQty < 1) pedidos_currentModalQty = 1; document.getElementById('pedidos-modal-qty-display').innerText = pedidos_currentModalQty; });
             document.getElementById('pedidos-modal-plus-btn').addEventListener('click', () => { pedidos_currentModalQty++; document.getElementById('pedidos-modal-qty-display').innerText = pedidos_currentModalQty; });
             
+            // REFACTOR: Se inyecta la escucha faltante para que el botón de "Agregar" pizza ejecute la mutación del carrito
+            document.getElementById('pedidos-modal-confirm-btn').addEventListener('click', pedidos_confirmAddPizza);
+
             // ESCUCHA REACTIVA CRM EN EL CAMPO CELULAR DE PEDIDOS + SANITIZACIÓN EN TIEMPO REAL AL PEGAR/ESCRIBIR
             document.getElementById('pedidos-client-phone').addEventListener('input', (e) => {
                 let inputVal = e.target.value;
