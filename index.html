@@ -149,9 +149,9 @@
         .admin-btn-success { background-color: var(--color-success); }
         .admin-btn-success:hover { background-color: #059669; }
 
-        /* Grillas de Métricas */
+        /* Grillas de Métricas y Lotes */
         .admin-metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
-        .admin-metric-card { background-color: var(--bg-card); border-radius: 16px; padding: 18px; border: 1px solid var(--border-color); display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; }
+        .admin-metric-card { background-color: var(--bg-card); border-radius: 16px; padding: 18px; border: 1px solid var(--border-color); display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; transition: all 0.3s ease; }
         .admin-metric-card::after { content: ''; position: absolute; left: 0; top: 25%; height: 50%; width: 4px; border-radius: 0 4px 4px 0; background-color: var(--text-secondary); }
         .admin-metric-card.m-success::after { background-color: var(--color-success); }
         .admin-metric-card.m-danger::after { background-color: var(--brand-red); }
@@ -159,6 +159,17 @@
         .admin-metric-card.m-warn::after { background-color: var(--color-warn); }
         .admin-metric-label { font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 10px; }
         .admin-metric-value { font-size: 24px; font-weight: 800; }
+
+        /* REFACTOR: Estilos específicos para la reactividad visual del Lote Activo */
+        .admin-metric-card.m-success {
+            border-color: var(--color-success) !important;
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
+        }
+        .admin-metric-card button:disabled {
+            background-color: var(--border-color) !important;
+            color: var(--text-secondary) !important;
+            cursor: not-allowed;
+        }
 
         /* Tablas */
         .admin-table-container { overflow-x: auto; width: 100%; }
@@ -208,6 +219,29 @@
         .tasa-premium-display i { font-size: 24px; color: var(--color-warn); margin-bottom: 8px; display: block; }
         .tasa-premium-value { font-size: 32px; font-weight: 900; color: var(--text-primary); letter-spacing: -1px; }
         .tasa-premium-value span { color: var(--color-warn); }
+
+        /* REFACTOR: Ajustes Responsive para Celulares (Botonera alineada e interfaces limpias) */
+        @media (max-width: 600px) {
+            .admin-tabs-nav {
+                flex-direction: column;
+                gap: 8px;
+                width: 100%;
+            }
+            .admin-tab-trigger {
+                width: 100%;
+                text-align: center;
+                padding: 14px;
+                font-size: 13px;
+            }
+            .admin-header {
+                flex-direction: column !important;
+                text-align: center !important;
+                gap: 16px !important;
+            }
+            .admin-grid-inputs {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
@@ -538,7 +572,6 @@
                 </div>
             </div>
 
-            <!-- PANE EXCLUSIVO PARA EDICIÓN DE PRECIOS -->
             <div id="servicio-pane-precios" class="admin-tab-pane admin-panel-box">
                 <h3 class="admin-panel-title" style="color:var(--color-warn);"><i class="fa-solid fa-tags"></i> Editor Maestro de Precios (Menú Digital)</h3>
                 <p style="font-size:12px; color:var(--text-secondary); margin-bottom:15px;">Modifica los valores del menú (Pizzas, Bebidas y Extras) directamente en Supabase. Requiere PIN de autorización.</p>
@@ -1058,8 +1091,9 @@
 
         function pedidos_updateCartIndexCount(index, change) {
             pedidos_cartArray[index].quantity += change; if (pedidos_cartArray[index].quantity <= 0) pedidos_cartArray.splice(index, 1);
-            pedidos_calculateTotals(); pedidos_renderCartList(); pedidos_updateMenuBadges();
+            pedidos_calculateTotals(); pedidos_updateCartIndexCount_render();
         }
+        function pedidos_updateCartIndexCount_render() { pedidos_renderCartList(); pedidos_calculateTotals(); pedidos_updateMenuBadges(); }
 
         function pedidos_openConfirmModal() { 
             if (pedidos_cartArray.length === 0) return alert("Tu pedido está vacío."); 
@@ -1512,7 +1546,7 @@
                 });
 
                 document.getElementById('servicio-btn-guardar-precios').style.display = 'block';
-            } catch(e) { box.innerHTML = '<div style="color:red; padding:10px; text-align:center;">Error al estructurar el catálogo maestro.</div>'; }
+            } catch(e) { box.innerHTML = '<div style="color:red; padding:10px; text-align:center;">Error al regresar el catálogo maestro.</div>'; }
         }
 
         async function servicio_guardarPreciosEditor() {
@@ -1573,7 +1607,9 @@
                                 Salchi: <b>${l.salchi_restantes}</b>/${l.salchi_producidos}<br>
                                 Familiar: <b>${l.familiar_restantes}</b>/${l.familiar_producidos}
                             </div>
-                            <button class="admin-btn" style="width:100%; font-size:11px; padding:6px;" ${l.activo?'disabled':''} onclick="servicio_activarLoteSistema(${l.lote_id})">Inicializar</button>
+                            <button class="admin-btn" style="width:100%; font-size:11px; padding:10px;" ${l.activo?'disabled':''} onclick="servicio_activarLoteSistema(${l.lote_id})">
+                                ${l.activo ? 'Lote Activo' : 'Inicializar'}
+                            </button>
                         </div>`;
                 });
             } catch(e){}
@@ -1592,12 +1628,38 @@
             const m = parseInt(document.getElementById('servicio-input-prod-medianos').value)||0;
             const s = parseInt(document.getElementById('servicio-input-prod-salchi').value)||0;
             const f = parseInt(document.getElementById('servicio-input-prod-familiar').value)||0;
+
+            if (n <= 0 && m <= 0 && s <= 0 && f <= 0) {
+                return alert("Ingresa valores mayores a 0 para reabastecer al menos un tamaño.");
+            }
+
             if(!await servicio_validarPin()) return alert("PIN denegado.");
 
             try {
-                await supabaseClient.from('produccion_lotes').update({ normales_producidos: n, normales_restantes: n, medianos_producidos: m, medianos_restantes: m, salchi_producidos: s, salchi_restantes: s, familiar_producidos: f, family_restantes: f, ultima_actualizacion: new Date().toISOString() }).eq('activo', true);
-                alert("Abastecimiento completado."); servicio_obtenerLotesMasa();
-            } catch(e){}
+                // REFACTOR: Corregido 'family_restantes' a 'familiar_restantes' para Supabase
+                const { error } = await supabaseClient.from('produccion_lotes').update({ 
+                    normales_producidos: n, 
+                    normales_restantes: n, 
+                    medianos_producidos: m, 
+                    medianos_restantes: m, 
+                    salchi_producidos: s, 
+                    salchi_restantes: s, 
+                    familiar_producidos: f, 
+                    familiar_restantes: f, 
+                    ultima_actualizacion: new Date().toISOString() 
+                }).eq('activo', true);
+
+                if (error) throw error;
+
+                alert("Abastecimiento completado."); 
+                
+                document.getElementById('servicio-input-prod-normales').value = "0";
+                document.getElementById('servicio-input-prod-medianos').value = "0";
+                document.getElementById('servicio-input-prod-salchi').value = "0";
+                document.getElementById('servicio-input-prod-familiar').value = "0";
+                
+                servicio_obtenerLotesMasa();
+            } catch(e){ alert("Error al inyectar masa al lote."); }
         }
 
         async function servicio_buscarPedidos() {
@@ -1752,7 +1814,6 @@
         document.addEventListener("DOMContentLoaded", () => {
             document.getElementById('pedidos-modal-min-btn').addEventListener('click', () => { pedidos_currentModalQty--; if (pedidos_currentModalQty < 1) pedidos_currentModalQty = 1; document.getElementById('pedidos-modal-qty-display').innerText = pedidos_currentModalQty; });
             document.getElementById('pedidos-modal-plus-btn').addEventListener('click', () => { pedidos_currentModalQty++; document.getElementById('pedidos-modal-qty-display').innerText = pedidos_currentModalQty; });
-            document.getElementById('pedidos-modal-confirm-btn').addEventListener('click', pedidos_confirmAddPizza);
             
             // ESCUCHA REACTIVA CRM EN EL CAMPO CELULAR DE PEDIDOS + SANITIZACIÓN EN TIEMPO REAL AL PEGAR/ESCRIBIR
             document.getElementById('pedidos-client-phone').addEventListener('input', (e) => {
