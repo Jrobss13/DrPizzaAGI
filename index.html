@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ecosistema Dr Pizza Cbo</title>
+    <title>Ecosistema Dr Pizza Cbo | Acceso interno v2</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/libphonenumber-js/1.10.53/libphonenumber-js.min.js"></script>
@@ -194,6 +194,15 @@
 
         /* Elementos específicos del módulo de Servicio */
         .servicio-grid-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+        .lote-card-panel { background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 14px; padding: 18px; position: relative; }
+        .lote-card-panel.activo { border-color: var(--color-success); box-shadow: 0 0 18px rgba(16,185,129,.18); }
+        .lote-status { position:absolute; top:12px; right:12px; padding:5px 9px; border-radius:999px; font-size:10px; font-weight:800; text-transform:uppercase; }
+        .lote-status.activo { background:rgba(16,185,129,.12); color:var(--color-success); border:1px solid rgba(16,185,129,.25); }
+        .lote-status.inactivo { background:rgba(255,255,255,.05); color:var(--text-secondary); border:1px solid var(--border-color); }
+        .lote-actions { display:flex; gap:8px; margin-top:14px; }
+        .lote-actions .admin-btn { flex:1; padding:10px 12px; font-size:11px; }
+        .admin-btn-danger { background:#7f1d1d; }
+        .admin-btn-danger:hover { background:#991b1b; }
         .servicio-card-ticket { background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; }
         .servicio-card-meta { font-size: 13px; line-height: 1.5; text-align: left; }
         .servicio-results-dropdown { border: 1px solid var(--border-color); border-radius: 12px; max-height: 180px; overflow-y: auto; margin-bottom: 20px; display: none; background: var(--bg-input); text-align: left; }
@@ -242,9 +251,97 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        /* Acceso interno mediante Supabase Auth */
+        body.auth-locked > *:not(#drpizza-auth-screen) { visibility: hidden !important; }
+        #drpizza-auth-screen {
+            position: fixed; inset: 0; z-index: 99999;
+            display: none; align-items: center; justify-content: center;
+            padding: 20px; background:
+                radial-gradient(circle at top, rgba(184,3,17,.22), transparent 38%),
+                #0B0B0C;
+        }
+        #drpizza-auth-screen.visible { display: flex; }
+        .drpizza-auth-card {
+            width: 100%; max-width: 390px; padding: 30px;
+            background: #16161A; border: 1px solid #2A2A32;
+            border-radius: 22px; box-shadow: 0 24px 70px rgba(0,0,0,.55);
+            text-align: center;
+        }
+        .drpizza-auth-icon {
+            width: 68px; height: 68px; margin: 0 auto 18px;
+            border-radius: 50%; display: grid; place-items: center;
+            background: rgba(184,3,17,.15); color: #B80311;
+            font-size: 28px; border: 1px solid rgba(184,3,17,.3);
+        }
+        .drpizza-auth-card h1 { margin: 0 0 7px; font-size: 24px; }
+        .drpizza-auth-card p { margin: 0 0 22px; color: #9CA3AF; font-size: 13px; line-height: 1.5; }
+        .drpizza-auth-field { text-align: left; margin-bottom: 14px; }
+        .drpizza-auth-field label {
+            display: block; margin-bottom: 7px; color: #9CA3AF;
+            font-size: 11px; font-weight: 800; text-transform: uppercase;
+        }
+        .drpizza-auth-field input {
+            width: 100%; padding: 13px 14px; border-radius: 11px;
+            border: 1px solid #2A2A32; background: #1F1F24;
+            color: #F3F4F6; font-size: 15px; outline: none;
+        }
+        .drpizza-auth-field input:focus { border-color: #B80311; }
+        #drpizza-auth-submit {
+            width: 100%; margin-top: 5px; padding: 14px;
+            border: 0; border-radius: 11px; cursor: pointer;
+            background: linear-gradient(135deg,#B80311,#82020B);
+            color: white; font-size: 14px; font-weight: 800;
+        }
+        #drpizza-auth-submit:disabled { opacity: .65; cursor: wait; }
+        #drpizza-auth-error {
+            display: none; margin: 14px 0 0; padding: 10px;
+            border-radius: 9px; background: rgba(184,3,17,.12);
+            color: #fca5a5; font-size: 12px;
+        }
+        #drpizza-session-box {
+            position: fixed; top: 15px; right: 15px; z-index: 2500;
+            display: none; align-items: center; gap: 8px;
+            padding: 7px 9px 7px 12px; border-radius: 10px;
+            background: rgba(0,0,0,.72); color: white;
+            border: 1px solid rgba(255,255,255,.15); backdrop-filter: blur(5px);
+            font-size: 11px;
+        }
+        #drpizza-session-box button {
+            border: 0; border-radius: 7px; padding: 6px 9px;
+            background: #82020B; color: white; cursor: pointer; font-weight: 700;
+        }
+
     </style>
 </head>
-<body>
+<body class="auth-locked">
+
+    <div id="drpizza-auth-screen">
+        <div class="drpizza-auth-card">
+            <div class="drpizza-auth-icon"><i class="fa-solid fa-lock"></i></div>
+            <h1>DrPizza Ecosistema</h1>
+            <p>Inicia sesión con tu cuenta interna para acceder al sistema.</p>
+
+            <div class="drpizza-auth-field">
+                <label for="drpizza-auth-email">Correo</label>
+                <input id="drpizza-auth-email" type="email" autocomplete="username" placeholder="correo@drpizza.com">
+            </div>
+
+            <div class="drpizza-auth-field">
+                <label for="drpizza-auth-password">Contraseña</label>
+                <input id="drpizza-auth-password" type="password" autocomplete="current-password" placeholder="••••••••">
+            </div>
+
+            <button id="drpizza-auth-submit" type="button">Entrar al sistema</button>
+            <div id="drpizza-auth-error"></div>
+        </div>
+    </div>
+
+    <div id="drpizza-session-box">
+        <span id="drpizza-session-email"></span>
+        <button type="button" onclick="drpizzaCerrarSesion()">Salir</button>
+    </div>
+
 
     <section id="pane-central-hub" class="spa-section active">
         <div class="landing-container">
@@ -585,6 +682,17 @@
             </div>
 
             <div id="servicio-pane-masa" class="admin-tab-pane">
+                <div class="admin-panel-box">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+                        <div>
+                            <h3 class="admin-panel-title" style="margin-bottom:6px;">Control de lotes de masa</h3>
+                            <p style="font-size:12px;color:var(--text-secondary);margin:0;">Activa un lote, cierra el actual o consulta sus existencias.</p>
+                        </div>
+                        <button class="admin-btn admin-btn-danger" onclick="servicio_cerrarLoteActivo()">
+                            <i class="fa-solid fa-power-off"></i> Cerrar lote activo
+                        </button>
+                    </div>
+                </div>
                 <div id="servicio-contenedor-lotes-masa" class="admin-metrics-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));"></div>
                 <div class="admin-panel-box" style="border: 1px dashed var(--color-info);">
                     <h3 class="admin-panel-title" style="color:var(--color-info);">📥 Abastecer Producción Directa al Lote Activo</h3>
@@ -737,7 +845,92 @@
 
         let global_exchangeRate = 42.00;
         let servicio_cacheProductosEditor = []; 
-        let servicio_cacheExtrasEditor = []; 
+        let servicio_cacheExtrasEditor = [];
+
+        async function drpizzaMostrarEstadoSesion(session) {
+            const pantalla = document.getElementById('drpizza-auth-screen');
+            const cajaSesion = document.getElementById('drpizza-session-box');
+            const correoSesion = document.getElementById('drpizza-session-email');
+
+            if (session) {
+                document.body.classList.remove('auth-locked');
+                pantalla.classList.remove('visible');
+                cajaSesion.style.display = 'flex';
+                correoSesion.textContent = session.user?.email || 'Sesión activa';
+            } else {
+                document.body.classList.add('auth-locked');
+                pantalla.classList.add('visible');
+                cajaSesion.style.display = 'none';
+                correoSesion.textContent = '';
+                setTimeout(() => document.getElementById('drpizza-auth-email')?.focus(), 80);
+            }
+        }
+
+        async function drpizzaIniciarSesion() {
+            const email = document.getElementById('drpizza-auth-email').value.trim();
+            const password = document.getElementById('drpizza-auth-password').value;
+            const boton = document.getElementById('drpizza-auth-submit');
+            const errorBox = document.getElementById('drpizza-auth-error');
+
+            errorBox.style.display = 'none';
+
+            if (!email || !password) {
+                errorBox.textContent = 'Ingresa correo y contraseña.';
+                errorBox.style.display = 'block';
+                return;
+            }
+
+            boton.disabled = true;
+            boton.textContent = 'Verificando...';
+
+            try {
+                const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+                if (error) throw error;
+
+                document.getElementById('drpizza-auth-password').value = '';
+                await drpizzaMostrarEstadoSesion(data.session);
+            } catch (error) {
+                console.error('Error de autenticación:', error);
+                errorBox.textContent = error.message || 'No se pudo iniciar sesión.';
+                errorBox.style.display = 'block';
+            } finally {
+                boton.disabled = false;
+                boton.textContent = 'Entrar al sistema';
+            }
+        }
+
+        async function drpizzaCerrarSesion() {
+            const confirmar = confirm('¿Cerrar la sesión de DrPizza?');
+            if (!confirmar) return;
+
+            const { error } = await supabaseClient.auth.signOut();
+            if (error) {
+                console.error('Error cerrando sesión:', error);
+                alert('No se pudo cerrar la sesión.');
+                return;
+            }
+
+            navegarA('hub');
+            await drpizzaMostrarEstadoSesion(null);
+        }
+
+        async function drpizzaInicializarAuth() {
+            try {
+                const { data, error } = await supabaseClient.auth.getSession();
+                if (error) throw error;
+                await drpizzaMostrarEstadoSesion(data.session);
+            } catch (error) {
+                console.error('Error verificando sesión:', error);
+                await drpizzaMostrarEstadoSesion(null);
+            }
+        }
+
+        window.drpizzaCerrarSesion = drpizzaCerrarSesion;
+
+        supabaseClient.auth.onAuthStateChange((_event, session) => {
+            drpizzaMostrarEstadoSesion(session);
+        });
+
 
         // CONTROLADOR MAESTRO DE RUTAS INTERNES SPA
         function navegarA(modulo) {
@@ -1550,77 +1743,217 @@
         }
 
         async function servicio_guardarPreciosEditor() {
-            if(!await servicio_validarPin()) return alert("PIN incorrecto.");
+            if (!await servicio_validarPin()) return alert("PIN incorrecto.");
+
             const inputs = document.querySelectorAll('.admin-input-precio-dinamico');
-            
-            let mapaProductos = {};
-            let listaExtras = [];
-
-            inputs.forEach(input => {
-                const tipo = input.getAttribute('data-tipo');
-                const id = input.getAttribute('data-item-id');
-                const val = parseFloat(input.value) || 0;
-
-                if (tipo === 'producto') {
-                    const sz = input.getAttribute('data-size-key');
-                    if(!mapaProductos[id]) {
-                        const original = servicio_cacheProductosEditor.find(x => String(x.id) === String(id));
-                        mapaProductos[id] = JSON.parse(JSON.stringify(original.prices));
-                    }
-                    mapaProductos[id][sz] = val;
-                } else if (tipo === 'extra') {
-                    listaExtras.push({ id: parseInt(id), price: val });
-                }
-            });
+            const mapaProductos = {};
+            const listaExtras = [];
 
             try {
-                let promesas = [];
-                
-                // Generar promesas de actualización para productos
-                Object.keys(mapaProductos).forEach(id => {
-                    promesas.push(supabaseClient.from('productos').update({ prices: mapaProductos[id] }).eq('id', parseInt(id)));
-                });
-                
-                // Generar promesas de actualización para extras
-                listaExtras.forEach(item => {
-                    promesas.push(supabaseClient.from('extras').update({ price: item.price }).eq('id', item.id));
+                inputs.forEach(input => {
+                    const tipo = input.getAttribute('data-tipo');
+                    const id = input.getAttribute('data-item-id');
+                    const valor = Number.parseFloat(input.value);
+
+                    if (!Number.isFinite(valor) || valor < 0) {
+                        throw new Error(`Precio inválido en el registro ${id}.`);
+                    }
+
+                    if (tipo === 'producto') {
+                        const sizeKey = input.getAttribute('data-size-key');
+
+                        if (!mapaProductos[id]) {
+                            const original = servicio_cacheProductosEditor.find(
+                                item => String(item.id) === String(id)
+                            );
+
+                            if (!original) {
+                                throw new Error(`No se encontró el producto ${id}.`);
+                            }
+
+                            mapaProductos[id] = JSON.parse(
+                                JSON.stringify(original.prices || {})
+                            );
+                        }
+
+                        mapaProductos[id][sizeKey] = valor;
+                    } else if (tipo === 'extra') {
+                        listaExtras.push({ id, price: valor });
+                    }
                 });
 
-                await Promise.all(promesas);
-                alert("🎉 ¡Precios de Productos, Bebidas y Extras sincronizados en Supabase!");
-                servicio_cargarPreciosEditor();
-            } catch(e) { alert("Error al guardar cambios de precios."); }
+                const boton = document.getElementById('servicio-btn-guardar-precios');
+                const textoOriginal = boton?.innerHTML;
+
+                if (boton) {
+                    boton.disabled = true;
+                    boton.innerHTML = '⏳ Guardando cambios...';
+                }
+
+                try {
+                    const operaciones = [];
+
+                    Object.entries(mapaProductos).forEach(([id, prices]) => {
+                        operaciones.push(
+                            supabaseClient
+                                .from('productos')
+                                .update({ prices })
+                                .eq('id', id)
+                                .select('id')
+                                .single()
+                        );
+                    });
+
+                    listaExtras.forEach(item => {
+                        operaciones.push(
+                            supabaseClient
+                                .from('extras')
+                                .update({ price: item.price })
+                                .eq('id', item.id)
+                                .select('id')
+                                .single()
+                        );
+                    });
+
+                    const resultados = await Promise.all(operaciones);
+                    const errores = resultados
+                        .map((resultado, index) => ({ index, error: resultado.error }))
+                        .filter(item => item.error);
+
+                    if (errores.length) {
+                        console.error('Errores guardando precios:', errores);
+                        throw new Error(
+                            errores.map(item => item.error.message).join(' | ')
+                        );
+                    }
+
+                    alert('🎉 Precios guardados correctamente en Supabase.');
+                    await servicio_cargarPreciosEditor();
+                    await pedidos_loadDataFromSupabase();
+                } finally {
+                    if (boton) {
+                        boton.disabled = false;
+                        boton.innerHTML = textoOriginal;
+                    }
+                }
+            } catch (error) {
+                console.error('Error guardando precios:', error);
+                alert(`No se pudieron guardar los precios: ${error.message || 'error desconocido'}`);
+            }
         }
 
         async function servicio_obtenerLotesMasa() {
-            const container = document.getElementById('servicio-contenedor-lotes-masa'); container.innerHTML = 'Leyendo...';
+            const box = document.getElementById('servicio-contenedor-lotes-masa');
+            box.innerHTML = '<div class="spa-loading">Cargando lotes de masa...</div>';
+
             try {
-                const { data } = await supabaseClient.from('produccion_lotes').select('*').order('lote_id', { ascending: true });
-                container.innerHTML = '';
+                const { data, error } = await supabaseClient
+                    .from('produccion_lotes')
+                    .select('*')
+                    .order('lote_id', { ascending: true });
+
+                if (error) throw error;
+
+                box.innerHTML = '';
+
+                if (!data || data.length === 0) {
+                    box.innerHTML = '<div class="admin-panel-box">No existen lotes registrados.</div>';
+                    return;
+                }
+
                 data.forEach(l => {
-                    container.innerHTML += `
-                        <div class="admin-metric-card ${l.activo?'m-success':''}" style="text-align:left;">
-                            <span class="admin-metric-label">LOTE ${l.lote_id} ${l.activo?'[ACTIVO]':''}</span>
-                            <div style="font-size:12px; color:var(--text-secondary); line-height:1.6; margin-bottom:10px;">
-                                Normales: <b>${l.normales_restantes}</b>/${l.normales_producidos}<br>
-                                Medianos: <b>${l.medianos_restantes}</b>/${l.medianos_producidos}<br>
-                                Salchi: <b>${l.salchi_restantes}</b>/${l.salchi_producidos}<br>
-                                Familiar: <b>${l.familiar_restantes}</b>/${l.familiar_producidos}
+                    box.innerHTML += `
+                        <div class="lote-card-panel ${l.activo ? 'activo' : ''}">
+                            <span class="lote-status ${l.activo ? 'activo' : 'inactivo'}">
+                                ${l.activo ? '● Activo' : '○ Apagado'}
+                            </span>
+
+                            <h3 style="margin:0 0 16px;font-size:22px;">LOTE ${l.lote_id}</h3>
+
+                            <div style="font-size:13px;line-height:1.8;color:var(--text-secondary);">
+                                🍕 Normales: <b>${l.normales_restantes ?? 0}</b> / ${l.normales_producidos ?? 0}<br>
+                                🍕 Medianos: <b>${l.medianos_restantes ?? 0}</b> / ${l.medianos_producidos ?? 0}<br>
+                                🌭 Salchi: <b>${l.salchi_restantes ?? 0}</b> / ${l.salchi_producidos ?? 0}<br>
+                                🏢 Familiar: <b>${l.familiar_restantes ?? 0}</b> / ${l.familiar_producidos ?? 0}
                             </div>
-                            <button class="admin-btn" style="width:100%; font-size:11px; padding:10px;" ${l.activo?'disabled':''} onclick="servicio_activarLoteSistema(${l.lote_id})">
-                                ${l.activo ? 'Lote Activo' : 'Inicializar'}
-                            </button>
+
+                            <div class="lote-actions">
+                                ${l.activo
+                                    ? `<button class="admin-btn admin-btn-danger" onclick="servicio_cerrarLoteActivo('${l.lote_id}')">
+                                           <i class="fa-solid fa-power-off"></i> Cerrar
+                                       </button>`
+                                    : `<button class="admin-btn" onclick="servicio_activarLoteSistema('${l.lote_id}')">
+                                           <i class="fa-solid fa-play"></i> Activar
+                                       </button>`
+                                }
+                            </div>
                         </div>`;
                 });
-            } catch(e){}
+            } catch (e) {
+                console.error('Error cargando lotes:', e);
+                box.innerHTML = `<div class="admin-panel-box" style="color:var(--brand-red);">
+                    No se pudieron cargar los lotes: ${e.message || 'error desconocido'}
+                </div>`;
+            }
         }
 
         async function servicio_activarLoteSistema(id) {
-            if(!await servicio_validarPin()) return alert("PIN inválido.");
+            const confirmar = confirm(
+                `¿Activar el Lote ${id}?\n\nEl lote activo anterior se cerrará automáticamente.`
+            );
+            if (!confirmar) return;
+
+            if (!await servicio_validarPin()) return alert("PIN inválido.");
+
             try {
-                await supabaseClient.rpc('activar_lote', { lote_a_activar: id });
-                servicio_obtenerLotesMasa();
-            } catch(e){}
+                const { error } = await supabaseClient.rpc('activar_lote', {
+                    lote_a_activar: id
+                });
+                if (error) throw error;
+
+                alert(`Lote ${id} activado correctamente.`);
+                await servicio_obtenerLotesMasa();
+            } catch (e) {
+                console.error('Error activando lote:', e);
+                alert(`No se pudo activar el lote: ${e.message || 'error desconocido'}`);
+            }
+        }
+
+        async function servicio_cerrarLoteActivo(loteId = null) {
+            const confirmar = confirm(
+                `¿Cerrar el lote activo?\n\nLos pastones restantes se conservarán para auditoría. Después del cierre no habrá ningún lote activo.`
+            );
+            if (!confirmar) return;
+
+            if (!await servicio_validarPin()) return alert("PIN inválido.");
+
+            try {
+                let consulta = supabaseClient
+                    .from('produccion_lotes')
+                    .update({
+                        activo: false,
+                        ultima_actualizacion: new Date().toISOString()
+                    })
+                    .eq('activo', true);
+
+                if (loteId !== null && loteId !== undefined && loteId !== '') {
+                    consulta = consulta.eq('lote_id', loteId);
+                }
+
+                const { data, error } = await consulta.select('lote_id');
+                if (error) throw error;
+
+                if (!data || data.length === 0) {
+                    alert("No había ningún lote activo para cerrar.");
+                } else {
+                    alert(`Lote ${data[0].lote_id} cerrado correctamente.`);
+                }
+
+                await servicio_obtenerLotesMasa();
+            } catch (e) {
+                console.error('Error cerrando lote:', e);
+                alert(`No se pudo cerrar el lote: ${e.message || 'error desconocido'}`);
+            }
         }
 
         async function servicio_cargarMasaLoteActivo() {
@@ -1636,6 +1969,18 @@
             if(!await servicio_validarPin()) return alert("PIN denegado.");
 
             try {
+                const { data: loteActivo, error: errorActivo } = await supabaseClient
+                    .from('produccion_lotes')
+                    .select('lote_id')
+                    .eq('activo', true)
+                    .maybeSingle();
+
+                if (errorActivo) throw errorActivo;
+                if (!loteActivo) {
+                    alert("No existe un lote activo. Activa uno antes de cargar producción.");
+                    return;
+                }
+
                 const { error } = await supabaseClient.from('produccion_lotes').update({ 
                     normales_producidos: n, 
                     normales_restantes: n, 
@@ -1809,8 +2154,20 @@
 
         function servicio_cancelarEdicion() { document.getElementById('servicio-form-edicion').style.display = 'none'; document.getElementById('servicio-input-buscar').value = ''; }
 
+        window.servicio_cerrarLoteActivo = servicio_cerrarLoteActivo;
+        window.servicio_activarLoteSistema = servicio_activarLoteSistema;
+
         // LISTSTNERS DE INYECCIÓN DE CONTROL DINÁMICO DE EVENTOS DEL DOM
         document.addEventListener("DOMContentLoaded", () => {
+            drpizzaInicializarAuth();
+
+            document.getElementById('drpizza-auth-submit').addEventListener('click', drpizzaIniciarSesion);
+            ['drpizza-auth-email','drpizza-auth-password'].forEach(id => {
+                document.getElementById(id).addEventListener('keydown', event => {
+                    if (event.key === 'Enter') drpizzaIniciarSesion();
+                });
+            });
+
             document.getElementById('pedidos-modal-min-btn').addEventListener('click', () => { pedidos_currentModalQty--; if (pedidos_currentModalQty < 1) pedidos_currentModalQty = 1; document.getElementById('pedidos-modal-qty-display').innerText = pedidos_currentModalQty; });
             document.getElementById('pedidos-modal-plus-btn').addEventListener('click', () => { pedidos_currentModalQty++; document.getElementById('pedidos-modal-qty-display').innerText = pedidos_currentModalQty; });
             
