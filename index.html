@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ecosistema Dr Pizza Cbo | Acceso interno v2</title>
+    <title>Ecosistema Dr Pizza Cbo | Gestor de menú</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/libphonenumber-js/1.10.53/libphonenumber-js.min.js"></script>
@@ -672,6 +672,43 @@
             <div id="servicio-pane-precios" class="admin-tab-pane admin-panel-box">
                 <h3 class="admin-panel-title" style="color:var(--color-warn);"><i class="fa-solid fa-tags"></i> Editor Maestro de Precios (Menú Digital)</h3>
                 <p style="font-size:12px; color:var(--text-secondary); margin-bottom:15px;">Modifica los valores del menú (Pizzas, Bebidas y Extras) directamente en Supabase. Requiere PIN de autorización.</p>
+
+                <div style="background:var(--bg-main); border:1px solid var(--border-color); border-radius:12px; padding:16px; margin-bottom:18px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px;">
+                        <div>
+                            <div style="font-size:13px; font-weight:800; color:var(--color-success); text-transform:uppercase;">➕ Agregar nuevo al menú</div>
+                            <div style="font-size:11px; color:var(--text-secondary); margin-top:4px;">Pizza y bebida se guardan en productos. Extra se guarda en extras.</div>
+                        </div>
+                        <button id="servicio-btn-toggle-nuevo-menu" class="admin-btn admin-btn-secondary" style="padding:9px 14px; font-size:11px;" onclick="servicio_toggleFormularioNuevoMenu()">Mostrar</button>
+                    </div>
+
+                    <div id="servicio-form-nuevo-menu" style="display:none;">
+                        <div class="admin-grid-inputs" style="margin-bottom:14px;">
+                            <div class="admin-input-group">
+                                <label>Tipo</label>
+                                <select id="servicio-nuevo-menu-tipo" onchange="servicio_renderCamposNuevoMenu()">
+                                    <option value="pizza">Pizza</option>
+                                    <option value="bebida">Bebida</option>
+                                    <option value="extra">Extra</option>
+                                </select>
+                            </div>
+                            <div class="admin-input-group">
+                                <label id="servicio-nuevo-menu-label-nombre">Nombre de la pizza</label>
+                                <input id="servicio-nuevo-menu-nombre" type="text" maxlength="100" placeholder="Ej. Pizza Cuatro Quesos">
+                            </div>
+                        </div>
+
+                        <div id="servicio-nuevo-menu-campos"></div>
+
+                        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px; flex-wrap:wrap;">
+                            <button class="admin-btn admin-btn-secondary" onclick="servicio_limpiarFormularioNuevoMenu()">Limpiar</button>
+                            <button id="servicio-btn-crear-menu" class="admin-btn admin-btn-success" onclick="servicio_crearNuevoMenu()">
+                                <i class="fa-solid fa-plus"></i> Agregar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 <div id="servicio-contenedor-precios-items" style="max-height:450px; overflow-y:auto; display:flex; flex-direction:column; gap:12px; background:var(--bg-main); padding:15px; border-radius:10px; border:1px solid var(--border-color);">
                     <div style="color:var(--text-secondary); text-align:center; padding:20px;">Presiona el botón de abajo para cargar los datos en tiempo real.</div>
                 </div>
@@ -1687,6 +1724,173 @@
         }
 
         // GESTOR COMPLETO DE PRECIOS: PIZZAS, BEBIDAS Y EXTRAS
+
+        function servicio_toggleFormularioNuevoMenu() {
+            const form = document.getElementById('servicio-form-nuevo-menu');
+            const btn = document.getElementById('servicio-btn-toggle-nuevo-menu');
+            const visible = form.style.display !== 'none';
+            form.style.display = visible ? 'none' : 'block';
+            btn.textContent = visible ? 'Mostrar' : 'Ocultar';
+            if (!visible) servicio_renderCamposNuevoMenu();
+        }
+
+        function servicio_renderCamposNuevoMenu() {
+            const tipo = document.getElementById('servicio-nuevo-menu-tipo')?.value || 'pizza';
+            const box = document.getElementById('servicio-nuevo-menu-campos');
+            const label = document.getElementById('servicio-nuevo-menu-label-nombre');
+            const nombre = document.getElementById('servicio-nuevo-menu-nombre');
+            if (!box) return;
+
+            if (tipo === 'pizza') {
+                label.textContent = 'Nombre de la pizza';
+                nombre.placeholder = 'Ej. Pizza Cuatro Quesos';
+                box.innerHTML = `
+                    <div class="admin-input-group" style="margin-bottom:14px;">
+                        <label>Descripción</label>
+                        <input id="servicio-nuevo-menu-descripcion" type="text" maxlength="250" placeholder="Ingredientes o descripción visible en el menú">
+                    </div>
+                    <div class="admin-grid-inputs">
+                        <div class="admin-input-group"><label>Precio Normal ($)</label><input id="servicio-nuevo-precio-normal" type="number" min="0" step="0.01"></div>
+                        <div class="admin-input-group"><label>Precio Mediana ($)</label><input id="servicio-nuevo-precio-mediana" type="number" min="0" step="0.01"></div>
+                        <div class="admin-input-group"><label>Precio Familiar ($)</label><input id="servicio-nuevo-precio-familiar" type="number" min="0" step="0.01"></div>
+                    </div>`;
+                return;
+            }
+
+            if (tipo === 'bebida') {
+                label.textContent = 'Nombre de la bebida';
+                nombre.placeholder = 'Ej. Refresco 2Lt';
+                box.innerHTML = `
+                    <div class="admin-input-group" style="margin-bottom:14px;">
+                        <label>Descripción</label>
+                        <input id="servicio-nuevo-menu-descripcion" type="text" maxlength="250" placeholder="Ej. Coca-Cola de 2 litros">
+                    </div>
+                    <div class="admin-grid-inputs">
+                        <div class="admin-input-group"><label>Precio único ($)</label><input id="servicio-nuevo-precio-unico" type="number" min="0" step="0.01"></div>
+                    </div>`;
+                return;
+            }
+
+            label.textContent = 'Nombre del Extra';
+            nombre.placeholder = 'Ej. Parmesano rallado';
+            box.innerHTML = `
+                <div class="admin-grid-inputs">
+                    <div class="admin-input-group"><label>Precio ($)</label><input id="servicio-nuevo-extra-precio" type="number" min="0" step="0.01"></div>
+                </div>`;
+        }
+
+        function servicio_limpiarFormularioNuevoMenu() {
+            const nombre = document.getElementById('servicio-nuevo-menu-nombre');
+            if (nombre) nombre.value = '';
+            servicio_renderCamposNuevoMenu();
+        }
+
+        async function servicio_generarSiguienteIdProducto(categoria) {
+            const { data, error } = await supabaseClient.from('productos').select('id');
+            if (error) throw error;
+
+            const prefijo = categoria === 'bebidas' ? 'b' : 'p';
+            const numeros = (data || [])
+                .map(x => String(x.id || ''))
+                .filter(id => id.toLowerCase().startsWith(prefijo))
+                .map(id => Number.parseInt(id.slice(prefijo.length), 10))
+                .filter(Number.isFinite);
+
+            let n = numeros.length ? Math.max(...numeros) + 1 : 1;
+            let id;
+            do {
+                id = prefijo === 'p' ? `p${String(n).padStart(2, '0')}` : `b${n}`;
+                n++;
+            } while ((data || []).some(x => String(x.id) === id));
+
+            return id;
+        }
+
+        async function servicio_generarSiguienteIdExtra() {
+            const { data, error } = await supabaseClient
+                .from('extras')
+                .select('id')
+                .order('id', { ascending: false })
+                .limit(1);
+            if (error) throw error;
+            const ultimo = Number.parseInt(data?.[0]?.id, 10);
+            return Number.isFinite(ultimo) ? ultimo + 1 : 1;
+        }
+
+        async function servicio_crearNuevoMenu() {
+            if (!await servicio_validarPin()) return alert('PIN incorrecto.');
+
+            const tipo = document.getElementById('servicio-nuevo-menu-tipo')?.value;
+            const nombre = document.getElementById('servicio-nuevo-menu-nombre')?.value.trim();
+            const boton = document.getElementById('servicio-btn-crear-menu');
+
+            if (!nombre) return alert('El nombre es obligatorio.');
+
+            const textoOriginal = boton.innerHTML;
+            boton.disabled = true;
+            boton.innerHTML = '⏳ Agregando...';
+
+            try {
+                let creado;
+
+                if (tipo === 'extra') {
+                    const price = Number.parseFloat(document.getElementById('servicio-nuevo-extra-precio')?.value);
+                    if (!Number.isFinite(price) || price < 0) throw new Error('Ingresa un precio válido para el Extra.');
+
+                    const id = await servicio_generarSiguienteIdExtra();
+                    const { data, error } = await supabaseClient
+                        .from('extras')
+                        .insert({ id, category: 'pizzas', name: nombre, price })
+                        .select('*')
+                        .single();
+                    if (error) throw error;
+                    creado = data;
+                } else {
+                    const description = document.getElementById('servicio-nuevo-menu-descripcion')?.value.trim();
+                    if (!description) throw new Error('La descripción es obligatoria.');
+
+                    const category = tipo === 'bebida' ? 'bebidas' : 'pizzas';
+                    const id = await servicio_generarSiguienteIdProducto(category);
+                    let prices;
+
+                    if (tipo === 'pizza') {
+                        const normal = Number.parseFloat(document.getElementById('servicio-nuevo-precio-normal')?.value);
+                        const mediana = Number.parseFloat(document.getElementById('servicio-nuevo-precio-mediana')?.value);
+                        const familiar = Number.parseFloat(document.getElementById('servicio-nuevo-precio-familiar')?.value);
+                        if (![normal, mediana, familiar].every(v => Number.isFinite(v) && v >= 0)) {
+                            throw new Error('Completa los tres precios de la pizza.');
+                        }
+                        prices = { Normal: normal, Mediana: mediana, Familiar: familiar };
+                    } else {
+                        const unica = Number.parseFloat(document.getElementById('servicio-nuevo-precio-unico')?.value);
+                        if (!Number.isFinite(unica) || unica < 0) throw new Error('Ingresa un precio válido para la bebida.');
+                        prices = { 'Única': unica };
+                    }
+
+                    const { data, error } = await supabaseClient
+                        .from('productos')
+                        .insert({ id, category, name: nombre, description, prices })
+                        .select('*')
+                        .single();
+                    if (error) throw error;
+                    creado = data;
+                }
+
+                if (!creado) throw new Error('Supabase no devolvió el registro creado.');
+
+                alert(`✅ ${nombre} fue agregado correctamente.`);
+                servicio_limpiarFormularioNuevoMenu();
+                await servicio_cargarPreciosEditor();
+                await pedidos_loadDataFromSupabase();
+            } catch (error) {
+                console.error('Error agregando al menú:', error);
+                alert(`No se pudo agregar: ${error.message || 'error desconocido'}`);
+            } finally {
+                boton.disabled = false;
+                boton.innerHTML = textoOriginal;
+            }
+        }
+
         async function servicio_cargarPreciosEditor() {
             const box = document.getElementById('servicio-contenedor-precios-items');
             box.innerHTML = '<div style="color:var(--text-secondary); padding:10px; text-align:center;">Descargando menú y extras desde Supabase...</div>';
@@ -1921,7 +2125,7 @@
 
         async function servicio_cerrarLoteActivo(loteId = null) {
             const confirmar = confirm(
-                `¿Cerrar el lote activo?\n\nLos pastones restantes se conservarán para auditoría. Después del cierre no habrá ningún lote activo.`
+                `¿Cerrar y limpiar el lote activo?\n\nTodos los pastones producidos y restantes quedarán en cero. Después del cierre no habrá ningún lote activo.`
             );
             if (!confirmar) return;
 
@@ -1932,6 +2136,14 @@
                     .from('produccion_lotes')
                     .update({
                         activo: false,
+                        salchi_producidos: 0,
+                        salchi_restantes: 0,
+                        normales_producidos: 0,
+                        normales_restantes: 0,
+                        medianos_producidos: 0,
+                        medianos_restantes: 0,
+                        familiar_producidos: 0,
+                        familiar_restantes: 0,
                         ultima_actualizacion: new Date().toISOString()
                     })
                     .eq('activo', true);
@@ -1940,18 +2152,20 @@
                     consulta = consulta.eq('lote_id', loteId);
                 }
 
-                const { data, error } = await consulta.select('lote_id');
+                const { data, error } = await consulta.select(
+                    'lote_id,salchi_producidos,salchi_restantes,normales_producidos,normales_restantes,medianos_producidos,medianos_restantes,familiar_producidos,familiar_restantes,activo'
+                );
                 if (error) throw error;
 
                 if (!data || data.length === 0) {
                     alert("No había ningún lote activo para cerrar.");
                 } else {
-                    alert(`Lote ${data[0].lote_id} cerrado correctamente.`);
+                    alert(`Lote ${data[0].lote_id} cerrado y limpiado correctamente. Todos los pastones quedaron en cero.`);
                 }
 
                 await servicio_obtenerLotesMasa();
             } catch (e) {
-                console.error('Error cerrando lote:', e);
+                console.error('Error cerrando y limpiando lote:', e);
                 alert(`No se pudo cerrar el lote: ${e.message || 'error desconocido'}`);
             }
         }
